@@ -5,7 +5,6 @@ go 1.17
 require (
 	github.com/charmbracelet/bubbles v0.10.0
 	github.com/charmbracelet/bubbletea v0.19.3
-	github.com/jinzhu/copier v0.3.5
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.9.0
 )
