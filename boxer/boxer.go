@@ -19,6 +19,8 @@ type Model struct {
 	Childs        []BoxerSize
 	Height, Width int
 	Stacked       bool
+
+	Border bool
 }
 
 // BoxerSize holds a boxer value and the current size the box of this boxer should have
@@ -45,12 +47,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q":
 			return m, tea.Quit
+		default:
+			for i, box := range m.Childs {
+				newModel, cmd := box.Boxer.Update(msg)
+				newBoxer, ok := newModel.(Boxer)
+				if ok {
+					box.Boxer = newBoxer
+				}
+				m.Childs[i] = box
+				cmdList = append(cmdList, cmd)
+			}
 		}
 	case tea.WindowSizeMsg:
 		amount := len(m.Childs)
 		for i, box := range m.Childs {
-			newHeigth := msg.Height
-			newWidth := msg.Width / amount
+			var multiBorder, Border int
+			if m.Border {
+				multiBorder = amount + 1
+				Border = 2
+			}
+			newHeigth := msg.Height - Border
+			newWidth := (msg.Width - multiBorder) / amount
+			if m.Stacked {
+				newHeigth = (msg.Height - multiBorder) / amount
+				newWidth = msg.Width - Border
+			}
 			newModel, cmd := box.Boxer.Update(tea.WindowSizeMsg{Height: newHeigth, Width: newWidth})
 			newBoxer, ok := newModel.(Boxer)
 			if ok {
@@ -58,6 +79,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			box.Heigth = newHeigth
 			box.Width = newWidth
+			m.Childs[i] = box
+			cmdList = append(cmdList, cmd)
+		}
+	default:
+		for i, box := range m.Childs {
+			newModel, cmd := box.Boxer.Update(msg)
+			newBoxer, ok := newModel.(Boxer)
+			if ok {
+				box.Boxer = newBoxer
+			}
 			m.Childs[i] = box
 			cmdList = append(cmdList, cmd)
 		}
@@ -82,15 +113,16 @@ func (m Model) Lines() ([]string, error) {
 // Lines returns the joined lines of all the contained Boxers
 func (m *Model) lines() ([]string, error) {
 	if m.Stacked {
-		return verticalJoin(m.Childs)
+		return verticalJoin(m.Childs, m.Border)
 	}
-	return hotizontalJoin(m.Childs)
+	return hotizontalJoin(m.Childs, m.Border)
 }
 
-func hotizontalJoin(toJoin []BoxerSize) ([]string, error) {
+func hotizontalJoin(toJoin []BoxerSize, Border bool) ([]string, error) {
 	if len(toJoin) == 0 {
 		return nil, fmt.Errorf("no childs to get lines from")
 	}
+	//            y  x
 	var joinedStr [][]string
 	var formerHeigth int
 	for _, boxer := range toJoin {
@@ -104,19 +136,27 @@ func hotizontalJoin(toJoin []BoxerSize) ([]string, error) {
 		}
 		joinedStr = append(joinedStr, lines)
 		if formerHeigth > 0 && formerHeigth != boxer.Heigth {
-			panic("for horizontal join all have to be the same heigth") // TODO change to error
+			return nil, fmt.Errorf("for horizontal join all have to be the same heigth") // TODO change to own error type
 		}
 		formerHeigth = boxer.Heigth
 	}
 
-	var allStr []string
 	lenght := len(joinedStr)
+	boxWidth := toJoin[0].Width
+	var allStr []string
+	var border string
+	if Border {
+		allStr = []string{"╭" + strings.Repeat("─", toJoin[0].Width) + "╮"}
+		border = "│"
+	}
+	// y
 	for c := 0; c < formerHeigth; c++ {
 		fullLine := make([]string, 0, lenght)
+		fullLine = append(fullLine, border)
+		// x
 		for i := 0; i < lenght; i++ {
 			line := joinedStr[i][c]
 			lineWidth := ansi.PrintableRuneWidth(line)
-			boxWidth := toJoin[i].Width
 			if lineWidth > boxWidth {
 				return nil, NewProporationError(toJoin[i].Boxer)
 			}
@@ -124,15 +164,27 @@ func hotizontalJoin(toJoin []BoxerSize) ([]string, error) {
 			if lineWidth < boxWidth {
 				pad = strings.Repeat(" ", boxWidth-lineWidth)
 			}
-			fullLine = append(fullLine, line, pad)
+			fullLine = append(fullLine, line, pad, border)
 		}
 		allStr = append(allStr, strings.Join(fullLine, ""))
 	}
+	if Border {
+		allStr = append(allStr, "╰"+strings.Repeat("─", toJoin[0].Width)+"╯")
+	}
+
 	return allStr, nil
 }
 
-func verticalJoin(toJoin []BoxerSize) ([]string, error) {
+func verticalJoin(toJoin []BoxerSize, Border bool) ([]string, error) {
+	if len(toJoin) == 0 {
+		return nil, fmt.Errorf("")
+	}
+	boxWidth := toJoin[0].Width
 	var boxes []string
+	if Border {
+		boxes = append(boxes, "╭"+strings.Repeat("─", toJoin[0].Width)+"╮")
+	}
+	var formerWidth int
 	for _, child := range toJoin {
 		if child.Boxer == nil {
 			return nil, fmt.Errorf("cant work on nil Boxer") // TODO
@@ -141,12 +193,26 @@ func verticalJoin(toJoin []BoxerSize) ([]string, error) {
 		if err != nil {
 			return nil, err // TODO limit propagation of errors
 		}
-		if len(lines) >= child.Heigth {
+		if len(lines) > child.Heigth {
 			return nil, NewProporationError(child.Boxer)
 		}
-		// expend lines to match the Height of the child-box
-		lines = append(lines, make([]string, child.Heigth-len(lines))...)
+		// check for  to wide lines and because we are on it, pad them to corrct width.
+		for _, line := range lines {
+			lineWidth := ansi.PrintableRuneWidth(line)
+			if formerWidth > 0 && lineWidth != formerWidth {
+				return nil, fmt.Errorf("for vertical join all boxes have to be the same width") // TODO change to own error type
+			}
+			line += strings.Repeat(" ", boxWidth-lineWidth)
+		}
 		boxes = append(boxes, lines...)
+		// add more lines to boxes to match the Height of the child-box
+		for c := 0; c < child.Heigth-len(lines); c++ {
+			boxes = append(boxes, strings.Repeat(" ", boxWidth))
+		}
+		// add border
+		if Border {
+			boxes = append(boxes, "╰"+strings.Repeat("─", toJoin[0].Width)+"╯")
+		}
 	}
 	return boxes, nil
 }
