@@ -11,7 +11,7 @@ import (
 // Boxer is a interface to render multiple bubbles (within a tree) to the terminal screen.
 type Boxer interface {
 	Lines() ([]string, error)
-	Update(tea.Msg) (tea.Model, tea.Cmd)
+	tea.Model
 }
 
 // Model is a bubble to manage/bundle other bubbles into boxes on the screen
@@ -29,12 +29,23 @@ type BoxerSize struct {
 
 type ProportionError error
 
+type LeaveMsg struct {
+	LeaveID int
+	Focus   bool
+}
+
 func NewProporationError(b Boxer) error {
 	return fmt.Errorf("the Lines function of this boxer: '%v'\nhas returned to much or long lines", b)
 }
 
 // Init does nothing
-func (m Model) Init() tea.Cmd { return nil }
+func (m Model) Init() tea.Cmd {
+	cmdList := make([]tea.Cmd, len(m.Childs))
+	for _, child := range m.Childs {
+		cmdList = append(cmdList, child.Boxer.Init())
+	}
+	return tea.Batch(cmdList...)
+}
 
 // Update handles the ratios between the different Boxers
 // though the according fanning of the WindowSizeMsg's
@@ -69,7 +80,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			newBoxer, ok := newModel.(Boxer)
 			if ok {
 				box.Boxer = newBoxer
-			}
+			} // TODO handle else case
 			box.Heigth = newHeigth
 			box.Width = newWidth
 			m.Childs[i] = box

@@ -15,6 +15,8 @@ type Leave struct {
 	Heigth      int
 	innerHeigth int
 	innerWidth  int
+	id          int
+	Focus       bool
 
 	N, NW, W, SW, S, SO, O, NO string
 }
@@ -39,6 +41,10 @@ func (l Leave) Init() tea.Cmd {
 func (l Leave) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// account for Border width/heigth
 	switch msg := msg.(type) {
+	case LeaveMsg:
+		if msg.LeaveID == l.id {
+			l.Focus = msg.Focus
+		}
 	case tea.WindowSizeMsg:
 		l.Width = msg.Width
 		l.Heigth = msg.Height
@@ -52,6 +58,9 @@ func (l Leave) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newContent, cmd := l.Content.Update(tea.WindowSizeMsg{Height: l.innerHeigth, Width: l.innerWidth})
 		l.Content = newContent
 		return l, cmd
+	}
+	if !l.Focus {
+		return l, nil
 	}
 	newContent, cmd := l.Content.Update(msg)
 	l.Content = newContent

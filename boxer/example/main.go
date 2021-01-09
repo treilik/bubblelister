@@ -10,12 +10,6 @@ import (
 )
 
 func main() {
-	leftList := list.NewModel()
-	leftList.AddItems(list.MakeStringerList([]string{"leftList", "rootchild"}))
-
-	leftLeave := boxer.NewLeave()
-	leftLeave.Content = leftList
-
 	lf := list.NewModel()
 	lf.AddItems(list.MakeStringerList([]string{"first", "grandchild"}))
 
@@ -35,6 +29,14 @@ func main() {
 	}, {
 		Boxer: boxer.Boxer(secondLeave),
 	}}
+
+	leftList := list.NewModel()
+	leftList.AddItems(list.MakeStringerList([]string{"leftList", "rootchild"}))
+
+	leftLeave := boxer.NewLeave()
+	leftLeave.Content = leftList
+	leftLeave.Focus = true
+
 	root := boxer.Model{}
 
 	root.Childs = []boxer.BoxerSize{
