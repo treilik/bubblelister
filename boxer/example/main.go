@@ -24,11 +24,11 @@ func main() {
 
 	rightChild := boxer.Model{}
 	rightChild.Stacked = true
-	rightChild.Childs = []boxer.BoxerSize{{
-		Boxer: boxer.Boxer(firstLeave),
+	rightChild.AddChildren([]boxer.BoxSize{{
+		Box: boxer.Boxer(firstLeave),
 	}, {
-		Boxer: boxer.Boxer(secondLeave),
-	}}
+		Box: boxer.Boxer(secondLeave),
+	}})
 
 	leftList := list.NewModel()
 	leftList.AddItems(list.MakeStringerList([]string{"leftList", "rootchild"}))
@@ -39,10 +39,10 @@ func main() {
 
 	root := boxer.Model{}
 
-	root.Childs = []boxer.BoxerSize{
-		{Boxer: leftLeave},
-		{Boxer: rightChild},
-	}
+	root.AddChildren([]boxer.BoxSize{
+		{Box: leftLeave},
+		{Box: rightChild},
+	})
 	p := tea.NewProgram(root)
 	if err := p.Start(); err != nil {
 		fmt.Println("could not start program")

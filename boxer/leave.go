@@ -5,22 +5,25 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/muesli/reflow/ansi"
+	"github.com/muesli/termenv"
 )
 
 // Leave are the Boxers which holds the content Models
 type Leave struct {
 	Content     tea.Model
 	Border      bool
+	BorderStyle termenv.Style
 	Width       int
 	Heigth      int
 	innerHeigth int
 	innerWidth  int
-	id          int
 	Focus       bool
+	id          int
 
 	N, NW, W, SW, S, SO, O, NO string
 }
 
+// NewLeave returns a leave with border enabled and set
 func NewLeave() Leave {
 	return Leave{
 		Border: true,
@@ -35,16 +38,32 @@ func NewLeave() Leave {
 	}
 }
 
+// Init is a proxy to the Content Init
 func (l Leave) Init() tea.Cmd {
 	return l.Content.Init()
 }
+
+// Update takes care about the seting of the id of this leave
+// and the changing of the WindowSizeMsg depending on the border
+// and the focus style of the border.
 func (l Leave) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// account for Border width/heigth
+	// TODO Remove hardcoded Focus styling:
+	if l.Focus {
+		l.BorderStyle = termenv.String().Foreground(termenv.ColorProfile().Color("#00aaaa"))
+	}
+	if !l.Focus {
+		l.BorderStyle = termenv.String()
+	}
+
 	switch msg := msg.(type) {
-	case LeaveMsg:
-		if msg.LeaveID == l.id {
-			l.Focus = msg.Focus
-		}
+	case InitIDs:
+		// make a uniq channel for this leave
+		idGen := make(chan int)
+		// send this uniq channel over the general channel
+		msg <- idGen
+		// to recive a uniq id from the uniq channel
+		l.id = <-idGen
+		return l, nil
 	case tea.WindowSizeMsg:
 		l.Width = msg.Width
 		l.Heigth = msg.Height
@@ -53,6 +72,7 @@ func (l Leave) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			l.innerHeigth = msg.Height
 			return l.Content.Update(msg)
 		}
+		// account for Border width/heigth
 		l.innerHeigth = msg.Height - strings.Count(l.N+l.S, "\n") - 2
 		l.innerWidth = msg.Width - ansi.PrintableRuneWidth(l.W+l.O)
 		newContent, cmd := l.Content.Update(tea.WindowSizeMsg{Height: l.innerHeigth, Width: l.innerWidth})
@@ -66,6 +86,9 @@ func (l Leave) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	l.Content = newContent
 	return l, cmd
 }
+
+// View is used to satisfy the tea.Model interface and returnes either the joined lines
+// or the Error string if err of lines is not nil.
 func (l Leave) View() string {
 	lines, err := l.lines()
 	if err != nil {
@@ -74,7 +97,8 @@ func (l Leave) View() string {
 	return strings.Join(lines, "\n")
 }
 
-// Lines returns the fully rendert (maybe with borders) lines and fullfills the Boxer Interface
+// Lines returns the fully rendert (maybe with borders) lines and fullfills the Boxer Interface.
+// Error may be of type ProporationError.
 func (l Leave) Lines() ([]string, error) {
 	return l.lines()
 }
@@ -96,6 +120,8 @@ func (l *Leave) lines() ([]string, error) {
 	if len(lines) < l.innerHeigth {
 		lines = append(lines, make([]string, l.innerHeigth-len(lines))...)
 	}
+
+	// expand to match width
 	for i, line := range lines {
 		lineWidth := ansi.PrintableRuneWidth(line)
 		if lineWidth > l.innerWidth {
@@ -107,12 +133,25 @@ func (l *Leave) lines() ([]string, error) {
 	if !l.Border {
 		return lines, err
 	}
+	// draw border
 	fullLines := make([]string, 0, len(lines)+strings.Count(l.N, "\n")+1)
-	fullLines = append(fullLines, l.NW+strings.Repeat(l.N, l.innerWidth)+l.NO)
-	for _, line := range lines {
-		fullLines = append(fullLines, l.W+line+l.O)
+	firstLine := l.NW + strings.Repeat(l.N, l.innerWidth) + l.NO
+	begin, end := l.W, l.O
+	lastLine := l.SW + strings.Repeat(l.S, l.innerWidth) + l.SO
+
+	// if set style border
+	if l.BorderStyle.String() != "" {
+		firstLine = l.BorderStyle.Styled(firstLine)
+		begin = l.BorderStyle.Styled(begin)
+		end = l.BorderStyle.Styled(end)
+		lastLine = l.BorderStyle.Styled(lastLine)
 	}
-	fullLines = append(fullLines, l.SW+strings.Repeat(l.S, l.innerWidth)+l.SO)
+
+	fullLines = append(fullLines, firstLine)
+	for _, line := range lines {
+		fullLines = append(fullLines, begin+line+end)
+	}
+	fullLines = append(fullLines, lastLine)
 
 	return fullLines, err
 }

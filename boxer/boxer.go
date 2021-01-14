@@ -16,34 +16,51 @@ type Boxer interface {
 
 // Model is a bubble to manage/bundle other bubbles into boxes on the screen
 type Model struct {
-	Childs        []BoxerSize
+	children      []BoxSize
 	Height, Width int
 	Stacked       bool
+	id            int
+
+	requestID chan<- chan int
 }
 
-// BoxerSize holds a boxer value and the current size the box of this boxer should have
-type BoxerSize struct {
-	Boxer         Boxer
+// BoxSize holds a boxer value and the current size the box of this boxer should have
+type BoxSize struct {
+	Box           Boxer
 	Width, Heigth int
 }
 
+// Start is a Msg to start the id spreading
+type Start struct{}
+
+// InitIDs is a Msg to spread the id's of the leaves
+type InitIDs chan<- chan int
+
+// ProportionError is for signaling that the string return by the View or Lines function has wrong proportions(width/height)
 type ProportionError error
 
-type LeaveMsg struct {
-	LeaveID int
-	Focus   bool
+// FocusLeave is used to gather the path of each leave while its trasported to the leave.
+type FocusLeave struct {
+	path []nodePos
+}
+type nodePos struct {
+	index    int
+	vertical bool
 }
 
+// NewProporationError returns a uniform string for this error
 func NewProporationError(b Boxer) error {
 	return fmt.Errorf("the Lines function of this boxer: '%v'\nhas returned to much or long lines", b)
 }
 
-// Init does nothing
+// Init call the Init methodes of the Children and returns the batched/collected returned Cmd's of them
 func (m Model) Init() tea.Cmd {
-	cmdList := make([]tea.Cmd, len(m.Childs))
-	for _, child := range m.Childs {
-		cmdList = append(cmdList, child.Boxer.Init())
+	cmdList := make([]tea.Cmd, len(m.children))
+	for _, child := range m.children {
+		cmdList = append(cmdList, child.Box.Init())
 	}
+	// the adding of the Start Msg leads to multiple Msg while only one is used and the rest gets ignored
+	cmdList = append(cmdList, func() tea.Msg { return Start{} })
 	return tea.Batch(cmdList...)
 }
 
@@ -52,48 +69,94 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmdList []tea.Cmd
 	switch msg := msg.(type) {
+	case Start:
+		// only the root node gets this all other ids will be set through the spreading of InitIDs
+		// TODO should root node be a own struct? to handel the id spread-starting cleaner.
+		if m.requestID != nil {
+			return m, nil
+		}
+		m.id = m.getID()
+		return m, func() tea.Msg { return InitIDs(m.requestID) }
+	case InitIDs:
+		if m.requestID == nil {
+			m.requestID = msg
+			genID := make(chan int)
+			m.requestID <- genID
+			m.id = <-genID
+		}
+		for i, box := range m.children {
+			newModel, cmd := box.Box.Update(msg)
+			newBoxer, ok := newModel.(Boxer)
+			if !ok {
+				continue
+			}
+			box.Box = newBoxer
+			m.children[i] = box
+			cmdList = append(cmdList, cmd)
+		}
+		return m, tea.Batch(cmdList...)
+	case FocusLeave:
+		for i, box := range m.children {
+			// for each child append its position to the path
+			msg.path = append(msg.path, nodePos{index: i, vertical: m.Stacked})
+			newModel, cmd := box.Box.Update(msg)
+			newBoxer, ok := newModel.(Boxer)
+			if !ok {
+				continue
+			}
+			box.Box = newBoxer
+			m.children[i] = box
+			cmdList = append(cmdList, cmd)
+		}
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
 			return m, tea.Quit
+		case "alt+up":
+
+		case "alt+right":
+		case "alt+down":
+		case "alt+left":
 		default:
-			for i, box := range m.Childs {
-				newModel, cmd := box.Boxer.Update(msg)
+			for i, box := range m.children {
+				newModel, cmd := box.Box.Update(msg)
 				newBoxer, ok := newModel.(Boxer)
 				if ok {
-					box.Boxer = newBoxer
+					continue
 				}
-				m.Childs[i] = box
+				box.Box = newBoxer
+				m.children[i] = box
 				cmdList = append(cmdList, cmd)
 			}
 		}
 	case tea.WindowSizeMsg:
-		amount := len(m.Childs)
-		for i, box := range m.Childs {
+		amount := len(m.children)
+		for i, box := range m.children {
 			newHeigth := msg.Height
 			newWidth := (msg.Width) / amount
 			if m.Stacked {
 				newHeigth = (msg.Height) / amount
 				newWidth = msg.Width
 			}
-			newModel, cmd := box.Boxer.Update(tea.WindowSizeMsg{Height: newHeigth, Width: newWidth})
+			newModel, cmd := box.Box.Update(tea.WindowSizeMsg{Height: newHeigth, Width: newWidth})
 			newBoxer, ok := newModel.(Boxer)
-			if ok {
-				box.Boxer = newBoxer
-			} // TODO handle else case
+			if !ok {
+				continue
+			}
+			box.Box = newBoxer
 			box.Heigth = newHeigth
 			box.Width = newWidth
-			m.Childs[i] = box
+			m.children[i] = box
 			cmdList = append(cmdList, cmd)
 		}
 	default:
-		for i, box := range m.Childs {
-			newModel, cmd := box.Boxer.Update(msg)
+		for i, box := range m.children {
+			newModel, cmd := box.Box.Update(msg)
 			newBoxer, ok := newModel.(Boxer)
 			if ok {
-				box.Boxer = newBoxer
+				box.Box = newBoxer
 			}
-			m.Childs[i] = box
+			m.children[i] = box
 			cmdList = append(cmdList, cmd)
 		}
 	}
@@ -117,20 +180,20 @@ func (m Model) Lines() ([]string, error) {
 // Lines returns the joined lines of all the contained Boxers
 func (m *Model) lines() ([]string, error) {
 	if m.Stacked {
-		return verticalJoin(m.Childs)
+		return verticalJoin(m.children)
 	}
-	return hotizontalJoin(m.Childs)
+	return hotizontalJoin(m.children)
 }
 
-func hotizontalJoin(toJoin []BoxerSize) ([]string, error) {
+func hotizontalJoin(toJoin []BoxSize) ([]string, error) {
 	if len(toJoin) == 0 {
-		return nil, fmt.Errorf("no childs to get lines from")
+		return nil, fmt.Errorf("no children to get lines from")
 	}
 	//            y  x
 	var joinedStr [][]string
 	var formerHeigth int
 	for _, boxer := range toJoin {
-		lines, err := boxer.Boxer.Lines()
+		lines, err := boxer.Box.Lines()
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +219,7 @@ func hotizontalJoin(toJoin []BoxerSize) ([]string, error) {
 			line := joinedStr[i][c]
 			lineWidth := ansi.PrintableRuneWidth(line)
 			if lineWidth > boxWidth {
-				return nil, NewProporationError(toJoin[i].Boxer)
+				return nil, NewProporationError(toJoin[i].Box)
 			}
 			var pad string
 			if lineWidth < boxWidth {
@@ -170,7 +233,7 @@ func hotizontalJoin(toJoin []BoxerSize) ([]string, error) {
 	return allStr, nil
 }
 
-func verticalJoin(toJoin []BoxerSize) ([]string, error) {
+func verticalJoin(toJoin []BoxSize) ([]string, error) {
 	if len(toJoin) == 0 {
 		return nil, fmt.Errorf("")
 	}
@@ -178,15 +241,15 @@ func verticalJoin(toJoin []BoxerSize) ([]string, error) {
 	var boxes []string
 	var formerWidth int
 	for _, child := range toJoin {
-		if child.Boxer == nil {
+		if child.Box == nil {
 			return nil, fmt.Errorf("cant work on nil Boxer") // TODO
 		}
-		lines, err := child.Boxer.Lines()
+		lines, err := child.Box.Lines()
 		if err != nil {
 			return nil, err // TODO limit propagation of errors
 		}
 		if len(lines) > child.Heigth {
-			return nil, NewProporationError(child.Boxer)
+			return nil, NewProporationError(child.Box)
 		}
 		// check for  to wide lines and because we are on it, pad them to corrct width.
 		for _, line := range lines {
@@ -203,4 +266,53 @@ func verticalJoin(toJoin []BoxerSize) ([]string, error) {
 		}
 	}
 	return boxes, nil
+}
+
+// AddChildren addes the given BoxerSize's as children
+// but excludes nil-values and returns after adding the rest a Nil Error
+func (m *Model) AddChildren(cList []BoxSize) error {
+	var errCount int
+	newChildren := make([]BoxSize, 0, len(cList))
+	for _, newChild := range cList {
+		switch c := newChild.Box.(type) {
+		case Model:
+			c.requestID = m.requestID
+			newChild.Box = c
+			newChildren = append(newChildren, newChild)
+		case Leave:
+			newChild.Box = c
+			newChildren = append(newChildren, newChild)
+		default:
+			errCount++
+		}
+	}
+	m.children = append(m.children, newChildren...)
+	if errCount > 0 {
+		return fmt.Errorf("%d entrys could not be added", errCount)
+	}
+	return nil
+}
+
+// getID returns a new for this Model(-tree) unique id
+// to identify the nodes/leave and direct the message flow.
+func (m *Model) getID() int {
+	if m.requestID == nil {
+		req := make(chan chan int)
+
+		m.requestID = req
+
+		// the id '0' is skiped to be able to distinguish zero-value and proper id TODO is this a valid/good way to go?
+		go func(requ <-chan chan int) {
+			for c := 2; true; c++ {
+				send := <-requ
+				send <- c
+				close(send)
+			}
+		}(req)
+
+		return 1
+	}
+	idChan := make(chan int)
+	m.requestID <- idChan
+	return <-idChan
 }
