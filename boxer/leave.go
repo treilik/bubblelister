@@ -64,6 +64,36 @@ func (l Leave) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// to recive a uniq id from the uniq channel
 		l.id = <-idGen
 		return l, nil
+	case FocusLeave:
+		if !l.Focus {
+			return l, nil
+		}
+		// TODO is there always a node befor a leave?
+		for c := len(msg.path) - 1; c >= 0; c-- {
+			if msg.path[c].vertical == msg.vertical {
+				l.Focus = false                  // TODO make sure a leave is allways focused
+				l.BorderStyle = termenv.String() // TODO remove hardcoding of style
+				newIndex := msg.path[c].index - 1
+				if msg.next {
+					newIndex = msg.path[c].index + 1
+				}
+				if newIndex < 0 {
+					// TODO
+				}
+				if len(msg.path) > 2 {
+					//panic(msg.path) //TODO
+				}
+
+				newFocusPath := msg.path[:c+1]   // exclude the rest of the path since its not valid for the new path
+				newFocusPath[c].index = newIndex // TODO her is no check possible if out of bound
+				// return the new path (from the root till the changing index) in side a ChangeFocus to signal the new node that one of its children should take the focus.
+
+				return l, func() tea.Msg { return ChangeFocus{focus: true, path: newFocusPath} }
+			}
+		}
+	case ChangeFocus:
+		l.Focus = msg.focus
+		return l, func() tea.Msg { return nil } // TODO why is a cmd nessecary to redraw in time?
 	case tea.WindowSizeMsg:
 		l.Width = msg.Width
 		l.Heigth = msg.Height

@@ -10,35 +10,40 @@ import (
 )
 
 func main() {
-	lf := list.NewModel()
-	lf.AddItems(list.MakeStringerList([]string{"first", "grandchild"}))
+	lowestFirst := list.NewModel()
+	lowestFirst.AddItems(list.MakeStringerList([]string{"first", "lowest first child"}))
+	lowestFirstLeave := boxer.NewLeave()
+	lowestFirstLeave.Content = lowestFirst
 
-	ls := list.NewModel()
-	ls.AddItems(list.MakeStringerList([]string{"second", "grandchild"}))
+	lowestSecond := list.NewModel()
+	lowestSecond.AddItems(list.MakeStringerList([]string{"first", "lowest second child"}))
+	lowestSecondLeave := boxer.NewLeave()
+	lowestSecondLeave.Content = lowestSecond
+	lowestSecondLeave.Focus = true
 
-	firstLeave := boxer.NewLeave()
-	firstLeave.Content = lf
+	grandNode := boxer.Model{}
+	grandNode.Stacked = true
+	grandNode.AddChildren([]boxer.BoxSize{{Box: boxer.Boxer(lowestFirstLeave)}, {Box: boxer.Boxer(lowestSecondLeave)}})
 
-	secondLeave := boxer.NewLeave()
-	secondLeave.Content = ls
+	grandChild := list.NewModel()
+	grandChild.AddItems(list.MakeStringerList([]string{"second", "grandchild"}))
+	grandLeave := boxer.NewLeave()
+	grandLeave.Content = grandChild
 
 	rightChild := boxer.Model{}
 	rightChild.Stacked = true
 	rightChild.AddChildren([]boxer.BoxSize{{
-		Box: boxer.Boxer(firstLeave),
+		Box: boxer.Boxer(grandNode),
 	}, {
-		Box: boxer.Boxer(secondLeave),
+		Box: boxer.Boxer(grandLeave),
 	}})
 
 	leftList := list.NewModel()
 	leftList.AddItems(list.MakeStringerList([]string{"leftList", "rootchild"}))
-
 	leftLeave := boxer.NewLeave()
 	leftLeave.Content = leftList
-	leftLeave.Focus = true
 
 	root := boxer.Model{}
-
 	root.AddChildren([]boxer.BoxSize{
 		{Box: leftLeave},
 		{Box: rightChild},

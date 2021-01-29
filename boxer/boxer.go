@@ -11,15 +11,17 @@ import (
 // Boxer is a interface to render multiple bubbles (within a tree) to the terminal screen.
 type Boxer interface {
 	Lines() ([]string, error)
-	tea.Model
+	tea.Model // TODO remove View
 }
 
 // Model is a bubble to manage/bundle other bubbles into boxes on the screen
 type Model struct {
 	children      []BoxSize
 	Height, Width int
-	Stacked       bool
+	Stacked       bool // TODO rename to vertical
 	id            int
+
+	errList []string // TODO remove?
 
 	requestID chan<- chan int
 }
@@ -41,11 +43,20 @@ type ProportionError error
 
 // FocusLeave is used to gather the path of each leave while its trasported to the leave.
 type FocusLeave struct {
-	path []nodePos
+	path           []nodePos
+	vertical, next bool
 }
+
+// ChangeFocus is the answere of FocusLeave and tells the parents to change the focus of the leaves by two msg.
+type ChangeFocus struct {
+	path  []nodePos
+	focus bool
+}
+
 type nodePos struct {
 	index    int
 	vertical bool
+	id       int //TODO remove
 }
 
 // NewProporationError returns a uniform string for this error
@@ -77,6 +88,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.id = m.getID()
 		return m, func() tea.Msg { return InitIDs(m.requestID) }
+
 	case InitIDs:
 		if m.requestID == nil {
 			m.requestID = msg
@@ -95,33 +107,126 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmdList = append(cmdList, cmd)
 		}
 		return m, tea.Batch(cmdList...)
+
+	// FocusLeave is a exception to the FAN-OUT of the Msg's because for each child there is a specific msg, similar to the WindowSizeMsg.
 	case FocusLeave:
 		for i, box := range m.children {
 			// for each child append its position to the path
-			msg.path = append(msg.path, nodePos{index: i, vertical: m.Stacked})
-			newModel, cmd := box.Box.Update(msg)
+			newMsg := msg
+			newMsg.path = append(msg.path, nodePos{index: i, vertical: m.Stacked, id: m.id})
+			newModel, cmd := box.Box.Update(newMsg)
+			// Focus
 			newBoxer, ok := newModel.(Boxer)
-			if !ok {
+			if !ok { // TODO
 				continue
 			}
 			box.Box = newBoxer
 			m.children[i] = box
 			cmdList = append(cmdList, cmd)
 		}
+		return m, tea.Batch(cmdList...)
+
+	// ChangedFocus is a exception to the FAN-OUT of the Msg's because its follows the specific path defined by the Msg-emitter.
+	case ChangeFocus:
+		var targetIndex int // TODO default is first of the array, so to speak most left and upper. should this be?
+		if len(msg.path) > 0 {
+			if ind := msg.path[0].index; ind >= len(m.children) || ind < 0 {
+				return m, tea.Batch(func() tea.Msg { return fmt.Errorf("invalid path: %d", ind) }, func() tea.Msg { return ChangeFocus{focus: true} }) // TODO make error own type // by leaving the path in the ChangeFocus msg empty a default path/leave will be choosen.//TODO change order? first/(sequential) the focuschange to minemise the no focus time?
+			}
+			targetIndex = msg.path[0].index
+		}
+		childMsg := ChangeFocus{focus: msg.focus}
+		if len(msg.path) > 1 {
+			childMsg.path = msg.path[1:]
+		}
+		newModel, cmd := m.children[targetIndex].Box.Update(childMsg)
+		var ok bool
+		m.children[targetIndex].Box, ok = newModel.(Boxer)
+		if !ok {
+			panic("wrong type") // TODO
+		}
+		//return m, tea.Batch(cmd, func() tea.Msg { return fmt.Errorf("%v", msg.path) }) TODO
+		return m, cmd
+
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q":
+		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "alt+up":
-
 		case "alt+right":
-		case "alt+down":
+			// this is a exception to the FAN_OUT since the inital message does not becomes distributed but sparks the distributen of FocusLeave Msg's
+			for i, box := range m.children {
+				fMsg := FocusLeave{}
+				fMsg.path = append(fMsg.path, nodePos{index: i, vertical: m.Stacked})
+				fMsg.next = true
+				fMsg.vertical = false
+				newModel, cmd := box.Box.Update(fMsg)
+				newBoxer, ok := newModel.(Boxer)
+				if !ok {
+					panic("wrong type") // TODO
+				}
+				box.Box = newBoxer
+				m.children[i] = box
+				cmdList = append(cmdList, cmd)
+			}
+			return m, tea.Batch(cmdList...)
 		case "alt+left":
+			// this is a exception to the FAN_OUT since the inital message does not becomes distributed but sparks the distributen of FocusLeave Msg's
+			for i, box := range m.children {
+				fMsg := FocusLeave{}
+				fMsg.path = append(fMsg.path, nodePos{index: i, vertical: m.Stacked})
+				fMsg.next = false
+				fMsg.vertical = false
+				newModel, cmd := box.Box.Update(fMsg)
+				newBoxer, ok := newModel.(Boxer)
+				if !ok {
+					continue
+				}
+				box.Box = newBoxer
+				m.children[i] = box
+				cmdList = append(cmdList, cmd)
+			}
+			return m, tea.Batch(cmdList...)
+		case "alt+up":
+			// this is a exception to the FAN_OUT since the inital message does not becomes distributed but sparks the distributen of FocusLeave Msg's
+			for i, box := range m.children {
+				fMsg := FocusLeave{}
+				fMsg.path = append(fMsg.path, nodePos{index: i, vertical: m.Stacked})
+				fMsg.next = false
+				fMsg.vertical = true
+				newModel, cmd := box.Box.Update(fMsg)
+				newBoxer, ok := newModel.(Boxer)
+				if !ok {
+					continue
+				}
+				box.Box = newBoxer
+				m.children[i] = box
+				cmdList = append(cmdList, cmd)
+			}
+			return m, tea.Batch(cmdList...)
+		case "alt+down":
+			// this is a exception to the FAN_OUT since the inital message does not becomes distributed but sparks the distributen of FocusLeave Msg's
+			//for i, box := range m.children {
+			fMsg := FocusLeave{}
+			//fMsg.path = append(fMsg.path, nodePos{index: i, vertical: m.Stacked})
+			fMsg.next = true
+			fMsg.vertical = true
+			//newModel, cmd := box.Box.Update(fMsg)
+			//newBoxer, ok := newModel.(Boxer)
+			//if !ok {
+			//continue
+			//}
+			//box.Box = newBoxer
+			//m.children[i] = box
+			//cmdList = append(cmdList, cmd)
+			//}
+			//return m, tea.Batch(cmdList...)
+			return m, func() tea.Msg { return fMsg }
+
 		default:
 			for i, box := range m.children {
 				newModel, cmd := box.Box.Update(msg)
 				newBoxer, ok := newModel.(Boxer)
-				if ok {
+				if !ok {
 					continue
 				}
 				box.Box = newBoxer
@@ -129,6 +234,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmdList = append(cmdList, cmd)
 			}
 		}
+		return m, tea.Batch(cmdList...)
 	case tea.WindowSizeMsg:
 		amount := len(m.children)
 		for i, box := range m.children {
@@ -149,6 +255,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.children[i] = box
 			cmdList = append(cmdList, cmd)
 		}
+		return m, tea.Batch(cmdList...)
+	case error:
+		m.errList = append(m.errList, msg.Error())
+		return m, nil
 	default:
 		for i, box := range m.children {
 			newModel, cmd := box.Box.Update(msg)
@@ -159,8 +269,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.children[i] = box
 			cmdList = append(cmdList, cmd)
 		}
+		return m, tea.Batch(cmdList...)
 	}
-	return m, tea.Batch(cmdList...)
 }
 
 // View is only used for the top (root) node since all other Models use the Lines function.
@@ -169,7 +279,7 @@ func (m Model) View() string {
 	if err != nil {
 		return err.Error()
 	}
-	return strings.Join(lines, "\n")
+	return strings.Join(append(lines, m.errList...), "\n") // TODO make windows compatible
 }
 
 // Lines returns the joined lines of all the contained Boxers
@@ -180,12 +290,12 @@ func (m Model) Lines() ([]string, error) {
 // Lines returns the joined lines of all the contained Boxers
 func (m *Model) lines() ([]string, error) {
 	if m.Stacked {
-		return verticalJoin(m.children)
+		return upDownJoin(m.children)
 	}
-	return hotizontalJoin(m.children)
+	return leftRightJoin(m.children)
 }
 
-func hotizontalJoin(toJoin []BoxSize) ([]string, error) {
+func leftRightJoin(toJoin []BoxSize) ([]string, error) {
 	if len(toJoin) == 0 {
 		return nil, fmt.Errorf("no children to get lines from")
 	}
@@ -233,7 +343,7 @@ func hotizontalJoin(toJoin []BoxSize) ([]string, error) {
 	return allStr, nil
 }
 
-func verticalJoin(toJoin []BoxSize) ([]string, error) {
+func upDownJoin(toJoin []BoxSize) ([]string, error) {
 	if len(toJoin) == 0 {
 		return nil, fmt.Errorf("")
 	}
