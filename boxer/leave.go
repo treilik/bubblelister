@@ -84,11 +84,12 @@ func (l Leave) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					//panic(msg.path) //TODO
 				}
 
-				newFocusPath := msg.path[:c+1]   // exclude the rest of the path since its not valid for the new path
-				newFocusPath[c].index = newIndex // TODO her is no check possible if out of bound
+				// update the msg to be the path for the new focus1
+				msg.path = msg.path[:c+1]    // exclude the rest of the path since its not valid for the new path
+				msg.path[c].index = newIndex // TODO her is no check possible if out of bound
 				// return the new path (from the root till the changing index) in side a ChangeFocus to signal the new node that one of its children should take the focus.
 
-				return l, func() tea.Msg { return ChangeFocus{focus: true, path: newFocusPath} }
+				return l, func() tea.Msg { return ChangeFocus{focus: true, newFocus: msg} }
 			}
 		}
 	case ChangeFocus:

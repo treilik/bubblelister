@@ -19,7 +19,6 @@ func main() {
 	lowestSecond.AddItems(list.MakeStringerList([]string{"first", "lowest second child"}))
 	lowestSecondLeave := boxer.NewLeave()
 	lowestSecondLeave.Content = lowestSecond
-	lowestSecondLeave.Focus = true
 
 	grandNode := boxer.Model{}
 	grandNode.Stacked = true
@@ -29,6 +28,7 @@ func main() {
 	grandChild.AddItems(list.MakeStringerList([]string{"second", "grandchild"}))
 	grandLeave := boxer.NewLeave()
 	grandLeave.Content = grandChild
+	grandLeave.Focus = true
 
 	rightChild := boxer.Model{}
 	rightChild.Stacked = true
@@ -43,9 +43,15 @@ func main() {
 	leftLeave := boxer.NewLeave()
 	leftLeave.Content = leftList
 
+	rigthList := list.NewModel()
+	rigthList.AddItems(list.MakeStringerList([]string{"rigthList", "rootchild"}))
+	rigthLeave := boxer.NewLeave()
+	rigthLeave.Content = rigthList
+
 	root := boxer.Model{}
 	root.AddChildren([]boxer.BoxSize{
 		{Box: leftLeave},
+		{Box: rigthLeave},
 		{Box: rightChild},
 	})
 	p := tea.NewProgram(root)

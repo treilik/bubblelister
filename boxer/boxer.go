@@ -49,8 +49,9 @@ type FocusLeave struct {
 
 // ChangeFocus is the answere of FocusLeave and tells the parents to change the focus of the leaves by two msg.
 type ChangeFocus struct {
-	path  []nodePos
-	focus bool
+	newFocus    FocusLeave
+	focus       bool
+	handledPath []nodePos
 }
 
 type nodePos struct {
@@ -129,15 +130,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ChangedFocus is a exception to the FAN-OUT of the Msg's because its follows the specific path defined by the Msg-emitter.
 	case ChangeFocus:
 		var targetIndex int // TODO default is first of the array, so to speak most left and upper. should this be?
-		if len(msg.path) > 0 {
-			if ind := msg.path[0].index; ind >= len(m.children) || ind < 0 {
-				return m, tea.Batch(func() tea.Msg { return fmt.Errorf("invalid path: %d", ind) }, func() tea.Msg { return ChangeFocus{focus: true} }) // TODO make error own type // by leaving the path in the ChangeFocus msg empty a default path/leave will be choosen.//TODO change order? first/(sequential) the focuschange to minemise the no focus time?
-			}
-			targetIndex = msg.path[0].index
+		if len(msg.newFocus.path) == 0 && !msg.newFocus.next && msg.newFocus.vertical == m.Stacked {
+			targetIndex = len(m.children) - 1
 		}
-		childMsg := ChangeFocus{focus: msg.focus}
-		if len(msg.path) > 1 {
-			childMsg.path = msg.path[1:]
+		if len(msg.newFocus.path) > 0 {
+			// got of bounds of children array so search for the next parent in path with same orientation to give focus to
+			// this has to be here (within the node) since the children does not know is position in the array.
+			if msg.newFocus.path[0].index < 0 {
+				for c, parent := range msg.handledPath {
+					if parent.vertical == msg.newFocus.vertical {
+						newPath := msg.handledPath
+						newPath[c].index-- // TODO doc
+						newChange := ChangeFocus{focus: true, newFocus: FocusLeave{path: newPath, vertical: msg.newFocus.vertical, next: msg.newFocus.next}}
+						return m, func() tea.Msg { return newChange }
+					}
+				}
+				// no correct node found => issue default focus through empty path
+				return m, func() tea.Msg { return ChangeFocus{focus: true} }
+			}
+			if msg.newFocus.path[0].index >= len(m.children) {
+				for c, parent := range msg.handledPath {
+					if parent.vertical == msg.newFocus.vertical {
+						newPath := msg.handledPath
+						newPath[c].index++ // TODO doc
+						newChange := ChangeFocus{focus: true, newFocus: FocusLeave{path: newPath, vertical: msg.newFocus.vertical, next: msg.newFocus.next}}
+						return m, func() tea.Msg { return newChange }
+					}
+				}
+				// no correct node found => issue default focus through empty path
+				return m, func() tea.Msg { return ChangeFocus{focus: true} }
+			}
+			targetIndex = msg.newFocus.path[0].index
+		}
+		childMsg := ChangeFocus{focus: msg.focus, newFocus: FocusLeave{vertical: msg.newFocus.vertical}}
+		if len(msg.newFocus.path) > 0 {
+			childMsg.handledPath = append(msg.handledPath, msg.newFocus.path[0])
+		}
+		if len(msg.newFocus.path) > 1 {
+			childMsg.newFocus.path = msg.newFocus.path[1:]
 		}
 		newModel, cmd := m.children[targetIndex].Box.Update(childMsg)
 		var ok bool
@@ -145,7 +175,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !ok {
 			panic("wrong type") // TODO
 		}
-		//return m, tea.Batch(cmd, func() tea.Msg { return fmt.Errorf("%v", msg.path) }) TODO
 		return m, cmd
 
 	case tea.KeyMsg:
@@ -153,75 +182,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "alt+right":
-			// this is a exception to the FAN_OUT since the inital message does not becomes distributed but sparks the distributen of FocusLeave Msg's
-			for i, box := range m.children {
-				fMsg := FocusLeave{}
-				fMsg.path = append(fMsg.path, nodePos{index: i, vertical: m.Stacked})
-				fMsg.next = true
-				fMsg.vertical = false
-				newModel, cmd := box.Box.Update(fMsg)
-				newBoxer, ok := newModel.(Boxer)
-				if !ok {
-					panic("wrong type") // TODO
-				}
-				box.Box = newBoxer
-				m.children[i] = box
-				cmdList = append(cmdList, cmd)
-			}
-			return m, tea.Batch(cmdList...)
+			return m, func() tea.Msg { return FocusLeave{next: true, vertical: false} }
 		case "alt+left":
-			// this is a exception to the FAN_OUT since the inital message does not becomes distributed but sparks the distributen of FocusLeave Msg's
-			for i, box := range m.children {
-				fMsg := FocusLeave{}
-				fMsg.path = append(fMsg.path, nodePos{index: i, vertical: m.Stacked})
-				fMsg.next = false
-				fMsg.vertical = false
-				newModel, cmd := box.Box.Update(fMsg)
-				newBoxer, ok := newModel.(Boxer)
-				if !ok {
-					continue
-				}
-				box.Box = newBoxer
-				m.children[i] = box
-				cmdList = append(cmdList, cmd)
-			}
-			return m, tea.Batch(cmdList...)
+			return m, func() tea.Msg { return FocusLeave{next: false, vertical: false} }
 		case "alt+up":
-			// this is a exception to the FAN_OUT since the inital message does not becomes distributed but sparks the distributen of FocusLeave Msg's
-			for i, box := range m.children {
-				fMsg := FocusLeave{}
-				fMsg.path = append(fMsg.path, nodePos{index: i, vertical: m.Stacked})
-				fMsg.next = false
-				fMsg.vertical = true
-				newModel, cmd := box.Box.Update(fMsg)
-				newBoxer, ok := newModel.(Boxer)
-				if !ok {
-					continue
-				}
-				box.Box = newBoxer
-				m.children[i] = box
-				cmdList = append(cmdList, cmd)
-			}
-			return m, tea.Batch(cmdList...)
+			return m, func() tea.Msg { return FocusLeave{next: false, vertical: true} }
 		case "alt+down":
-			// this is a exception to the FAN_OUT since the inital message does not becomes distributed but sparks the distributen of FocusLeave Msg's
-			//for i, box := range m.children {
-			fMsg := FocusLeave{}
-			//fMsg.path = append(fMsg.path, nodePos{index: i, vertical: m.Stacked})
-			fMsg.next = true
-			fMsg.vertical = true
-			//newModel, cmd := box.Box.Update(fMsg)
-			//newBoxer, ok := newModel.(Boxer)
-			//if !ok {
-			//continue
-			//}
-			//box.Box = newBoxer
-			//m.children[i] = box
-			//cmdList = append(cmdList, cmd)
-			//}
-			//return m, tea.Batch(cmdList...)
-			return m, func() tea.Msg { return fMsg }
-
+			return m, func() tea.Msg { return FocusLeave{next: true, vertical: true} }
 		default:
 			for i, box := range m.children {
 				newModel, cmd := box.Box.Update(msg)
