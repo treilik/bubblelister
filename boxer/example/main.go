@@ -50,9 +50,9 @@ func main() {
 
 	root := boxer.Model{}
 	root.AddChildren([]boxer.BoxSize{
+		{Box: rightChild},
 		{Box: leftLeave},
 		{Box: rigthLeave},
-		{Box: rightChild},
 	})
 	p := tea.NewProgram(root)
 	if err := p.Start(); err != nil {

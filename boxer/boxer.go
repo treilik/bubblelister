@@ -20,6 +20,7 @@ type Model struct {
 	Height, Width int
 	Stacked       bool // TODO rename to vertical
 	id            int
+	lastFocused   int
 
 	errList []string // TODO remove?
 
@@ -129,39 +130,63 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// ChangedFocus is a exception to the FAN-OUT of the Msg's because its follows the specific path defined by the Msg-emitter.
 	case ChangeFocus:
-		var targetIndex int // TODO default is first of the array, so to speak most left and upper. should this be?
-		if len(msg.newFocus.path) == 0 && !msg.newFocus.next && msg.newFocus.vertical == m.Stacked {
-			targetIndex = len(m.children) - 1
-		}
+		// default to the last focused
+		targetIndex := m.lastFocused
+
+		// path is not empyt
 		if len(msg.newFocus.path) > 0 {
-			// got of bounds of children array so search for the next parent in path with same orientation to give focus to
-			// this has to be here (within the node) since the children does not know is position in the array.
-			if msg.newFocus.path[0].index < 0 {
-				for c, parent := range msg.handledPath {
-					if parent.vertical == msg.newFocus.vertical {
-						newPath := msg.handledPath
-						newPath[c].index-- // TODO doc
-						newChange := ChangeFocus{focus: true, newFocus: FocusLeave{path: newPath, vertical: msg.newFocus.vertical, next: msg.newFocus.next}}
-						return m, func() tea.Msg { return newChange }
-					}
-				}
-				// no correct node found => issue default focus through empty path
-				return m, func() tea.Msg { return ChangeFocus{focus: true} }
-			}
-			if msg.newFocus.path[0].index >= len(m.children) {
-				for c, parent := range msg.handledPath {
-					if parent.vertical == msg.newFocus.vertical {
-						newPath := msg.handledPath
-						newPath[c].index++ // TODO doc
-						newChange := ChangeFocus{focus: true, newFocus: FocusLeave{path: newPath, vertical: msg.newFocus.vertical, next: msg.newFocus.next}}
-						return m, func() tea.Msg { return newChange }
-					}
-				}
-				// no correct node found => issue default focus through empty path
-				return m, func() tea.Msg { return ChangeFocus{focus: true} }
-			}
+			// follow the pfad
 			targetIndex = msg.newFocus.path[0].index
 		}
+
+		// path is empty => dont know where to go.
+		if len(msg.newFocus.path) == 0 {
+			// default to the first in the directon of the movement. (i.e. the first or the last)
+			if !msg.newFocus.next && msg.newFocus.vertical == m.Stacked {
+				targetIndex = len(m.children) - 1
+			}
+		}
+
+		// if its not possible to follow the path:
+		if targetIndex < 0 || targetIndex >= len(m.children) {
+			// then search for the next parent in path with the same orientation, to give focus to.
+			// this has to be here (within the node) since the children does not know is position in the array.
+			for c, parent := range msg.handledPath {
+				// ignore parents with different orientatien
+				if parent.vertical != msg.newFocus.vertical {
+					continue
+				}
+				newPath := msg.handledPath
+				// try to move to previous/next branch
+				if targetIndex < 0 {
+					// we do not (and can not) know here, if the index will be out of bounds, but this code here in the next parent with the same orientation will check it again.
+					newPath[c].index--
+				}
+				if targetIndex >= len(m.children) {
+					// we do not (and can not) know here, if the index will be out of bounds, but this code here in the next parent with the same orientation will check it again.
+					newPath[c].index++
+				}
+				newChange := ChangeFocus{focus: true, newFocus: FocusLeave{path: newPath, vertical: msg.newFocus.vertical, next: msg.newFocus.next}}
+				return m, func() tea.Msg { return newChange }
+			}
+			// no parent with correct orientatien found
+			// TODO doc
+			if targetIndex < 0 {
+				m.lastFocused = 0
+				targetIndex = 0 // focus first
+			}
+			if targetIndex >= len(m.children) {
+				m.lastFocused = len(m.children) - 1
+				targetIndex = len(m.children) - 1 // focus last
+			}
+			if len(msg.handledPath) > 0 {
+				// issue default focus through empty path
+				return m, func() tea.Msg { return ChangeFocus{focus: true, newFocus: FocusLeave{vertical: msg.newFocus.vertical}} }
+			}
+
+			// TODO doc (root)
+		}
+
 		childMsg := ChangeFocus{focus: msg.focus, newFocus: FocusLeave{vertical: msg.newFocus.vertical}}
 		if len(msg.newFocus.path) > 0 {
 			childMsg.handledPath = append(msg.handledPath, msg.newFocus.path[0])
@@ -169,6 +194,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(msg.newFocus.path) > 1 {
 			childMsg.newFocus.path = msg.newFocus.path[1:]
 		}
+		m.lastFocused = targetIndex
 		newModel, cmd := m.children[targetIndex].Box.Update(childMsg)
 		var ok bool
 		m.children[targetIndex].Box, ok = newModel.(Boxer)

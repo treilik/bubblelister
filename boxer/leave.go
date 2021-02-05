@@ -49,10 +49,10 @@ func (l Leave) Init() tea.Cmd {
 func (l Leave) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// TODO Remove hardcoded Focus styling:
 	if l.Focus {
-		l.BorderStyle = termenv.String().Foreground(termenv.ColorProfile().Color("#00aaaa"))
+		l.BorderStyle = termenv.String().Foreground(termenv.ColorProfile().Color("#00aaaa")) // TODO remove hardcoding of style
 	}
 	if !l.Focus {
-		l.BorderStyle = termenv.String()
+		l.BorderStyle = termenv.String() // TODO remove hardcoding of style
 	}
 
 	switch msg := msg.(type) {
@@ -70,28 +70,31 @@ func (l Leave) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// TODO is there always a node befor a leave?
 		for c := len(msg.path) - 1; c >= 0; c-- {
-			if msg.path[c].vertical == msg.vertical {
-				l.Focus = false                  // TODO make sure a leave is allways focused
-				l.BorderStyle = termenv.String() // TODO remove hardcoding of style
-				newIndex := msg.path[c].index - 1
-				if msg.next {
-					newIndex = msg.path[c].index + 1
-				}
-				if newIndex < 0 {
-					// TODO
-				}
-				if len(msg.path) > 2 {
-					//panic(msg.path) //TODO
-				}
-
-				// update the msg to be the path for the new focus1
-				msg.path = msg.path[:c+1]    // exclude the rest of the path since its not valid for the new path
-				msg.path[c].index = newIndex // TODO her is no check possible if out of bound
-				// return the new path (from the root till the changing index) in side a ChangeFocus to signal the new node that one of its children should take the focus.
-
-				return l, func() tea.Msg { return ChangeFocus{focus: true, newFocus: msg} }
+			if msg.path[c].vertical != msg.vertical {
+				continue
 			}
+			l.Focus = false                  // TODO make sure a leave is allways focused
+			l.BorderStyle = termenv.String() // TODO remove hardcoding of style
+			newIndex := msg.path[c].index - 1
+			if msg.next {
+				newIndex = msg.path[c].index + 1
+			}
+			// here we can check if infront the array but not if behind this will be checked in that node
+			if newIndex < 0 {
+				continue
+			}
+
+			// update the msg to be the path for the new focus1
+			msg.path = msg.path[:c+1] // exclude the rest of the path since its not valid for the new path
+			msg.path[c].index = newIndex
+			// return the new path (from the root till the changing index) in side a ChangeFocus to signal the new node that one of its children should take the focus.
+
+			return l, func() tea.Msg { return ChangeFocus{focus: true, newFocus: msg} }
 		}
+		// stay focused if no parent with same orientatien and suitable children is found.
+		l.Focus = true
+		l.BorderStyle = termenv.String().Foreground(termenv.ColorProfile().Color("#00aaaa")) // TODO remove hardcoding of style
+
 	case ChangeFocus:
 		l.Focus = msg.focus
 		return l, func() tea.Msg { return nil } // TODO why is a cmd nessecary to redraw in time?
