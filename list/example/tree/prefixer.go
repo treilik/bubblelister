@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/termenv"
+	"github.com/treilik/bubblelist/list"
 	"strings"
 )
 

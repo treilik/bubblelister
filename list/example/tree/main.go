@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/treilik/bubblelist/list"
 	"os"
 	"strings"
 )
