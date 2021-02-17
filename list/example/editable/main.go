@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/muesli/termenv"
+	"github.com/treilik/bubblesgum/list"
 	//"log"
 	"os"
 	"strconv"

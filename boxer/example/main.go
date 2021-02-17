@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/bubbles/boxer"
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/treilik/bubblesgum/boxer"
+	"github.com/treilik/bubblesgum/list"
 )
 
 func main() {

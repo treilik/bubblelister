@@ -5,8 +5,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/treilik/bubblesgum/list"
 )
 
 // DISCLAIMER: This is not a template but a example.

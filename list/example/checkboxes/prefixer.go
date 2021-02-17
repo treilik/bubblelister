@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/muesli/reflow/ansi"
+	"github.com/treilik/bubblesgum/list"
 	"strings"
 )
 
