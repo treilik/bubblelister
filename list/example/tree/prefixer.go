@@ -85,7 +85,7 @@ func (d *TreePrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex int, po
 	}
 
 	// Get the hole prefix width
-	d.prefixWidth = d.numWidth + d.sepWidth + d.markWidth
+	d.prefixWidth = d.numWidth + d.sepWidth + d.markWidth + ansi.PrintableRuneWidth(d.LevelPadder(d.level))
 
 	return d.prefixWidth
 }
