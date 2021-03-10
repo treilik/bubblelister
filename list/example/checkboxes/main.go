@@ -153,8 +153,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		width := msg.Width
 		height := msg.Height
-		m.vis.Screen.Width = width
-		m.vis.Screen.Height = height
+		m.vis.Width = width
+		m.vis.Height = height
 
 		if !m.ready {
 			// Since this program can use the full size of the viewport we need

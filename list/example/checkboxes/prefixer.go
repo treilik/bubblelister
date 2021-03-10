@@ -27,7 +27,8 @@ type SelectPrefixer struct {
 	NumberRelative bool
 
 	prefixWidth int
-	viewPos     list.ViewPos
+	cursorIndex int
+	lineOffset  int
 
 	markWidth int
 	numWidth  int
@@ -71,23 +72,24 @@ func NewPrefixer() *SelectPrefixer {
 }
 
 // InitPrefixer sets up all strings used to prefix a given line later by Prefix()
-func (s *SelectPrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex int, position list.ViewPos, screen list.ScreenInfo) int {
+func (s *SelectPrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex, cursorIndex, lineOffset, width, height int) int {
 	// TODO adapt to per item call
 	n, ok := value.(item)
 	if ok {
 		s.value = n
 	}
 	s.currentIndex = currentItemIndex
-	s.viewPos = position
+	s.lineOffset = lineOffset
+	s.cursorIndex = cursorIndex
 
-	offset := position.Cursor - position.LineOffset
+	offset := cursorIndex - lineOffset
 	if offset < 0 {
 		offset = 0
 	}
 
 	// get widest possible number, for padding
 	// TODO handle wrap, cause only correct when wrap off:
-	s.numWidth = len(fmt.Sprintf("%d", offset+screen.Height))
+	s.numWidth = len(fmt.Sprintf("%d", offset+height))
 
 	seWidth := ansi.PrintableRuneWidth(s.Selected)
 	unWidth := ansi.PrintableRuneWidth(s.UnSelect)
@@ -129,7 +131,7 @@ func (s *SelectPrefixer) Prefix(lineIndex, allLines int) string {
 	var wrapPad string
 	var lineNum int
 	if s.Number {
-		lineNum = lineNumber(s.NumberRelative, s.viewPos.Cursor, s.currentIndex)
+		lineNum = lineNumber(s.NumberRelative, s.cursorIndex, s.currentIndex)
 	}
 	number := fmt.Sprintf("%d", lineNum)
 	// since digits are only single bytes, len is sufficient:
@@ -151,7 +153,7 @@ func (s *SelectPrefixer) Prefix(lineIndex, allLines int) string {
 
 	// Current: handle marking of current item/first-line
 	curPad := s.unmark
-	if s.currentIndex == s.viewPos.Cursor {
+	if s.currentIndex == s.cursorIndex {
 		curPad = s.mark
 	}
 

@@ -14,7 +14,8 @@ func TestEmptyLines(t *testing.T) {
 	if cmd != nil {
 		t.Error("Init should do nothing") // yet
 	}
-	m.Screen = ScreenInfo{Height: 50, Width: 80}
+	m.Height = 50
+	m.Width = 80
 	_, err := m.Lines()
 	if err == nil {
 		t.Error("A list with no entrys should return a error.")
@@ -29,7 +30,8 @@ func TestEmptyLines(t *testing.T) {
 // TestBasicsLines test lines without linebreaks and with content shorter than the max content-width.
 func TestBasicsLines(t *testing.T) {
 	m := NewModel()
-	m.Screen = ScreenInfo{Height: 50, Width: 80, Profile: 0} // No color
+	m.Height = 50
+	m.Width = 80
 	m.PrefixGen = NewPrefixer()
 	m.SuffixGen = NewSuffixer()
 
@@ -66,7 +68,7 @@ func TestBasicsLines(t *testing.T) {
 	m.Top()
 	out, _ := m.Lines()
 	if len(out) > 50 {
-		t.Errorf("Lines should never have more (%d) lines than Screen has lines: %d", len(out), m.Screen.Height)
+		t.Errorf("Lines should never have more (%d) lines than Screen has lines: %d", len(out), m.Height)
 	}
 
 	light := "\x1b[7m"
@@ -90,7 +92,8 @@ func TestWrappedLines(t *testing.T) {
 	m := NewModel()
 	m.PrefixGen = NewPrefixer()
 	m.SuffixGen = NewSuffixer()
-	m.Screen = ScreenInfo{Height: 50, Width: 80}
+	m.Height = 50
+	m.Width = 80
 	m.AddItems(MakeStringerList([]string{"\n0", "1\n2", "3\n4", "5\n6", "7\n8"}))
 
 	out, _ := m.Lines()
@@ -118,7 +121,8 @@ func TestMultiLineBreaks(t *testing.T) {
 	m := NewModel()
 	m.PrefixGen = NewPrefixer()
 	m.SuffixGen = NewSuffixer()
-	m.Screen = ScreenInfo{Height: 50, Width: 80}
+	m.Height = 50
+	m.Width = 80
 	m.AddItems(MakeStringerList([]string{"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"}))
 	out, _ := m.Lines()
 	prefix := "\x1b[7m 1╭>"
@@ -133,7 +137,8 @@ func TestMultiLineBreaks(t *testing.T) {
 // TestUpdateKeys test if the ctrl-c key send to the Update function work properly
 func TestUpdateKeys(t *testing.T) {
 	m := NewModel()
-	m.Screen = ScreenInfo{Height: 50, Width: 80}
+	m.Height = 50
+	m.Width = 80
 
 	// Quit massages
 	_, cmd := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyCtrlC}))
@@ -146,78 +151,78 @@ func TestUpdateKeys(t *testing.T) {
 func TestMovementKeys(t *testing.T) {
 	m := NewModel()
 	m.Wrap = 1
-	m.Screen = ScreenInfo{Height: 50, Width: 80}
+	m.Height = 50
+	m.Width = 80
 	m.AddItems(MakeStringerList([]string{"\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n"}))
 
 	start, finish := 0, 1
 	_, cmd := m.MoveCursor(1)
 	err, ok := cmd().(error)
-	if m.viewPos.Cursor != finish || err != nil {
-		t.Errorf("'MoveCursor(1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.viewPos.Cursor)
+	if m.cursorIndex != finish || err != nil {
+		t.Errorf("'MoveCursor(1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
 	start, finish = 15, 14
-	m.viewPos.Cursor = start
+	m.cursorIndex = start
 	_, cmd = m.MoveCursor(-1)
 	err, ok = cmd().(error)
-	if m.viewPos.Cursor != finish || err != nil {
-		t.Errorf("'MoveCursor(-1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.viewPos.Cursor)
+	if m.cursorIndex != finish || err != nil {
+		t.Errorf("'MoveCursor(-1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
 
 	start, finish = 55, 56
-	m.viewPos.Cursor = start
+	m.cursorIndex = start
 	cmd = m.MoveItem(1)
 	err, ok = cmd().(error)
-	if m.viewPos.Cursor != finish || err != nil {
-		t.Errorf("'MoveItem(1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.viewPos.Cursor)
+	if m.cursorIndex != finish || err != nil {
+		t.Errorf("'MoveItem(1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
-	m.viewPos.LineOffset = 15
+	m.lineOffset = 15
 	start, finish = 15, 14
-	m.viewPos.Cursor = start
+	m.cursorIndex = start
 	cmd = m.MoveItem(-1)
 	err, ok = cmd().(error)
-	if m.viewPos.Cursor != finish || err != nil {
-		t.Errorf("'MoveItem(-1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.viewPos.Cursor)
+	if m.cursorIndex != finish || err != nil {
+		t.Errorf("'MoveItem(-1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
-	if m.viewPos.LineOffset != 14 {
-		t.Errorf("up movement should change the Item offset to '14' but got: %d", m.viewPos.LineOffset)
+	if m.lineOffset != 14 {
+		t.Errorf("up movement should change the Item offset to '14' but got: %d", m.lineOffset)
 	}
 	finish = m.Len() - 1
 	cmd = m.Bottom()
 	err, ok = cmd().(error)
-	if m.viewPos.Cursor != finish || err != nil {
-		t.Errorf("'Bottom()' should have nil error but got: '%#v' and move the Cursor to last index: '%d', but got: %d", err, m.Len()-1, m.viewPos.Cursor)
+	if m.cursorIndex != finish || err != nil {
+		t.Errorf("'Bottom()' should have nil error but got: '%#v' and move the Cursor to last index: '%d', but got: %d", err, m.Len()-1, m.cursorIndex)
 	}
 	finish = 0
-	m.viewPos.Cursor = start
+	m.cursorIndex = start
 	cmd = m.Top()
 	err, ok = cmd().(error)
-	if m.viewPos.Cursor != finish || err != nil {
-		t.Errorf("'Top()' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.viewPos.Cursor)
+	if m.cursorIndex != finish || err != nil {
+		t.Errorf("'Top()' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
 	_, cmd = m.SetCursor(10)
 	err, ok = cmd().(error)
-	if m.viewPos.Cursor != 10 || ok && err != nil {
-		t.Errorf("SetCursor should set the cursor to index '10' but gut '%d' and err should be nil but got '%s'", m.viewPos.Cursor, err)
+	if m.cursorIndex != 10 || ok && err != nil {
+		t.Errorf("SetCursor should set the cursor to index '10' but gut '%d' and err should be nil but got '%s'", m.cursorIndex, err)
 	}
 }
 
 // WindowMsg
 func TestWindowMsg(t *testing.T) {
 	m := NewModel()
+	width, height := 80, 50
 
-	newModel, cmd := m.Update(tea.WindowSizeMsg{Width: 80, Height: 50})
+	newModel, cmd := m.Update(tea.WindowSizeMsg{Width: width, Height: height})
 	m, _ = newModel.(Model)
-
-	// Because within the Update the termenv.Profile will be set, when reciving the Windowszie, depending on currently running terminal
-	// we overwrite it her to have a reproduceable test-result
-	m.Screen.Profile = 0
 
 	if cmd != nil {
 		t.Errorf("comand should be nil and not: '%#v'", cmd)
 	}
-	soll := ScreenInfo{Width: 80, Height: 50}
-	if m.Screen != soll {
-		t.Errorf("Screen should be %#v and not: %#v", soll, m.Screen)
+	if m.Width != width {
+		t.Errorf("the Width should be %#v and not: %#v", width, m.Width)
+	}
+	if m.Height != height {
+		t.Errorf("the Width should be %#v and not: %#v", height, m.Height)
 	}
 
 }
@@ -269,8 +274,10 @@ func TestCopy(t *testing.T) {
 
 		fmt.Sprintf("%#v", org.CursorOffset) != fmt.Sprintf("%#v", sec.CursorOffset) ||
 
-		fmt.Sprintf("%#v", org.Screen) != fmt.Sprintf("%#v", sec.Screen) ||
-		fmt.Sprintf("%#v", org.viewPos) != fmt.Sprintf("%#v", sec.viewPos) ||
+		fmt.Sprintf("%#v", org.Width) != fmt.Sprintf("%#v", sec.Width) ||
+		fmt.Sprintf("%#v", org.Height) != fmt.Sprintf("%#v", sec.Height) ||
+		fmt.Sprintf("%#v", org.cursorIndex) != fmt.Sprintf("%#v", sec.cursorIndex) ||
+		fmt.Sprintf("%#v", org.lineOffset) != fmt.Sprintf("%#v", sec.lineOffset) ||
 
 		fmt.Sprintf("%#v", org.Wrap) != fmt.Sprintf("%#v", sec.Wrap) ||
 
@@ -287,36 +294,43 @@ func TestCopy(t *testing.T) {
 // TestSetCursor tests if the LineOffset and Cursor positions are correct
 func TestSetCursor(t *testing.T) {
 	m := NewModel()
-	m.Screen = ScreenInfo{Height: 50, Width: 80}
+	m.Height = 50
+	m.Width = 80
 	m.AddItems(MakeStringerList([]string{"\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n", ""}))
 	type test struct {
-		oldView ViewPos
-		target  int
-		newView ViewPos
+		oldLineOffset  int
+		oldCursorIndex int
+		target         int
+		newLineOffset  int
+		newCursorIndex int
 	}
 	toTest := []test{
 		// forwards
-		{ViewPos{0, 0}, -2, ViewPos{0, 0}}, // wrong request -> no change
-		{ViewPos{0, 0}, 2, ViewPos{5, 2}},
-		{ViewPos{0, 4}, 8, ViewPos{8, 8}},
-		{ViewPos{0, 5}, 0, ViewPos{5, 0}},
-		{ViewPos{0, 0}, 19, ViewPos{38, 19}},
-		{ViewPos{0, 0}, 25, ViewPos{44, 25}},
-		{ViewPos{0, 0}, 100, ViewPos{0, 0}}, // wrong request -> no change
+		{0, 0, -2, 0, 0}, // wrong request -> no change
+		{0, 0, 2, 5, 2},
+		{0, 4, 8, 8, 8},
+		{0, 5, 0, 5, 0},
+		{0, 0, 19, 38, 19},
+		{0, 0, 25, 44, 25},
+		{0, 0, 100, 0, 0}, // wrong request -> no change
 		// backwards
-		{ViewPos{45, m.Len() - 1}, -2, ViewPos{45, m.Len() - 1}}, // wrong request -> no change
-		{ViewPos{45, m.Len() - 1}, 2, ViewPos{5, 2}},
-		{ViewPos{45, m.Len() - 1}, 8, ViewPos{5, 8}},
-		{ViewPos{45, m.Len() - 1}, 0, ViewPos{5, 0}},
-		{ViewPos{45, m.Len() - 1}, 19, ViewPos{5, 19}},
-		{ViewPos{45, m.Len() - 1}, 25, ViewPos{5, 25}},
-		{ViewPos{45, m.Len() - 1}, 100, ViewPos{45, m.Len() - 1}}, // wrong request -> no change
+		{45, m.Len() - 1, -2, 45, m.Len() - 1}, // wrong request -> no change
+		{45, m.Len() - 1, 2, 5, 2},
+		{45, m.Len() - 1, 8, 5, 8},
+		{45, m.Len() - 1, 0, 5, 0},
+		{45, m.Len() - 1, 19, 5, 19},
+		{45, m.Len() - 1, 25, 5, 25},
+		{45, m.Len() - 1, 100, 45, m.Len() - 1}, // wrong request -> no change
 	}
 	for i, tCase := range toTest {
-		m.viewPos = tCase.oldView
+		m.cursorIndex = tCase.oldCursorIndex
+		m.lineOffset = tCase.oldLineOffset
 		m.SetCursor(tCase.target)
-		if m.viewPos != tCase.newView {
-			t.Errorf("In Test number: %d, the returned ViewPos is wrong:\n'%#v' and should be:\n'%#v' after requesting target: %d", i, m.viewPos, tCase.newView, tCase.target)
+		if m.cursorIndex != tCase.newCursorIndex {
+			t.Errorf("In Test number: %d, the returned cursor index is wrong:\n'%#v' and should be:\n'%#v' after requesting target: %d", i, m.cursorIndex, tCase.newCursorIndex, tCase.target)
+		}
+		if m.lineOffset != tCase.newLineOffset {
+			t.Errorf("In Test number: %d, the returned Line Offset is wrong:\n'%#v' and should be:\n'%#v' after requesting target: %d", i, m.lineOffset, tCase.newLineOffset, tCase.target)
 		}
 	}
 }
@@ -357,8 +371,8 @@ func TestView(t *testing.T) {
 	if _, err := m.Lines(); err == nil {
 		t.Error("a none empty list should return a error when the screen is to small to displax anything")
 	}
-	m.Screen.Height = 10
-	m.Screen.Width = 100
+	m.Height = 10
+	m.Width = 100
 	if _, err := m.Lines(); err != nil || !strings.Contains(m.View(), testStr) {
 		t.Errorf("a none empty list should not return a error but got:\n%sand the content should be within the returned string from View:\n%s", err, m.View())
 	}

@@ -10,7 +10,7 @@ import (
 // Init gets called ones on the beginning of the Lines methode
 // and then Prefix ones, per line to draw, to generate according prefixes.
 type Prefixer interface {
-	InitPrefixer(currentItem fmt.Stringer, currentItemIndex int, viewPos ViewPos, screenInfo ScreenInfo) int
+	InitPrefixer(value fmt.Stringer, currentItemIndex, cursorIndex, lineOffset, width, height int) int
 	Prefix(currentLine, allLines int) string
 }
 
@@ -31,7 +31,7 @@ type DefaultPrefixer struct {
 	NumberRelative bool
 
 	prefixWidth int
-	viewPos     ViewPos
+	cursorIndex int
 
 	markWidth int
 	numWidth  int
@@ -65,12 +65,12 @@ func NewPrefixer() *DefaultPrefixer {
 }
 
 // InitPrefixer sets up all strings used to prefix a given line later by Prefix()
-func (d *DefaultPrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex int, position ViewPos, screen ScreenInfo) int {
+func (d *DefaultPrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex, cursorIndex, lineOffset, width, height int) int {
 	// TODO adapt to per item call
 	d.currentIndex = currentItemIndex
-	d.viewPos = position
+	d.cursorIndex = cursorIndex
 
-	offset := position.Cursor - position.LineOffset
+	offset := cursorIndex - lineOffset
 	if offset < 0 {
 		offset = 0
 	}
@@ -91,7 +91,7 @@ func (d *DefaultPrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex int,
 
 	// get widest possible number, for padding
 	// TODO handle wrap, cause only correct when wrap off:
-	d.numWidth = len(fmt.Sprintf("%d", offset+screen.Height))
+	d.numWidth = len(fmt.Sprintf("%d", offset+height))
 
 	// pad all prefixes to the same width for easy exchange
 	// pad all separators to the same width for easy exchange
@@ -116,7 +116,7 @@ func (d *DefaultPrefixer) Prefix(lineIndex, allLines int) string {
 	var wrapPad string
 	var lineNum int
 	if d.Number {
-		lineNum = lineNumber(d.NumberRelative, d.viewPos.Cursor, d.currentIndex)
+		lineNum = lineNumber(d.NumberRelative, d.cursorIndex, d.currentIndex)
 	}
 	number := fmt.Sprintf("%d", lineNum)
 	// since digits are only single bytes, len is sufficient:
@@ -131,7 +131,7 @@ func (d *DefaultPrefixer) Prefix(lineIndex, allLines int) string {
 
 	// Current: handle highlighting of current item/first-line
 	curPad := d.unmark
-	if d.currentIndex == d.viewPos.Cursor {
+	if d.currentIndex == d.cursorIndex {
 		curPad = d.mark
 	}
 

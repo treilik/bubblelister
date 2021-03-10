@@ -19,12 +19,12 @@ type item struct {
 func (m *Model) itemLines(i item, index int) []string {
 	var preWidth, sufWidth int
 	if m.PrefixGen != nil {
-		preWidth = m.PrefixGen.InitPrefixer(i.value, index, m.viewPos, m.Screen)
+		preWidth = m.PrefixGen.InitPrefixer(i.value, index, m.cursorIndex, m.lineOffset, m.Width, m.Height)
 	}
 	if m.SuffixGen != nil {
-		sufWidth = m.SuffixGen.InitSuffixer(i.value, index, m.viewPos, m.Screen)
+		sufWidth = m.SuffixGen.InitSuffixer(i.value, index, m.cursorIndex, m.lineOffset, m.Width, m.Height)
 	}
-	contentWith := m.Screen.Width - preWidth - sufWidth
+	contentWith := m.Width - preWidth - sufWidth
 	// TODO hard limit the string length
 	lines := strings.Split(wordwrap.String(i.value.String(), contentWith), "\n")
 	if m.Wrap != 0 && len(lines) > m.Wrap {
@@ -67,7 +67,7 @@ func (m *Model) getItemLines(index, contentWidth int) ([]string, error) {
 
 		// Highlighting of current item lines
 		style := m.LineStyle
-		if index == m.viewPos.Cursor {
+		if index == m.cursorIndex {
 			style = m.CurrentStyle
 		}
 

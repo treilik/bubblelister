@@ -417,8 +417,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		width := msg.Width
 		height := msg.Height
-		m.list.Screen.Width = width
-		m.list.Screen.Height = height
+		m.list.Width = width
+		m.list.Height = height
 
 		if !m.ready {
 			// Since this program can use the full size of the viewport we need

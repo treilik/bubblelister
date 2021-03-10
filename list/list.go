@@ -15,11 +15,16 @@ type Model struct {
 	Less   func(fmt.Stringer, fmt.Stringer) bool // function used for sorting // TODO make public?
 	Equals func(fmt.Stringer, fmt.Stringer) bool // used after sorting, to be set from the user
 
-	// offset or margin between the cursor and the viewport(visible) border
+	// offset or margin between the cursor and the visible border
 	CursorOffset int
 
-	Screen  ScreenInfo
-	viewPos ViewPos
+	// The visible Area size of the list
+	Width, Height int
+
+	cursorIndex int
+
+	// The maximal amout of lines (not items) infront of the cursor index
+	lineOffset int
 
 	// Wrap changes the number of lines which get displayed. 0 means unlimited lines.
 	Wrap int
@@ -43,7 +48,7 @@ func NewModel() Model {
 	return Model{
 		// Try to keep $CursorOffset lines between Cursor and screen Border
 		CursorOffset: 5,
-		viewPos:      ViewPos{LineOffset: 5},
+		lineOffset:   5,
 
 		// show all lines
 		Wrap: 0,
@@ -77,9 +82,8 @@ func (m Model) View() string {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// handel Window resizes even if the model is not focused
 	if msg, ok := msg.(tea.WindowSizeMsg); ok {
-		m.Screen.Width = msg.Width
-		m.Screen.Height = msg.Height
-		m.Screen.Profile = termenv.ColorProfile()
+		m.Width = msg.Width
+		m.Height = msg.Height
 		return m, nil
 	}
 
@@ -140,25 +144,25 @@ func (m *Model) lines() ([]string, error) {
 		return nil, NoItems(fmt.Errorf("no items within the list"))
 	}
 	// check visible area
-	if m.Screen.Height*m.Screen.Width <= 0 {
+	if m.Height <= 0 || m.Width <= 0 {
 		return nil, fmt.Errorf("Can't display with zero width or hight of Viewport")
 	}
 
-	linesBefor := make([]string, 0, m.viewPos.LineOffset)
+	linesBefor := make([]string, 0, m.lineOffset)
 	// loop to add the item(-lines) befor the cursor to the return lines
 	// dont add cursor item
-	for c := 1; m.viewPos.Cursor-c >= 0; c++ {
-		index := m.viewPos.Cursor - c
+	for c := 1; m.cursorIndex-c >= 0; c++ {
+		index := m.cursorIndex - c
 		// Get the Width of each suf/prefix
 		var prefixWidth, suffixWidth int
 		if m.PrefixGen != nil {
-			prefixWidth = m.PrefixGen.InitPrefixer(m.listItems[index].value, c, m.viewPos, m.Screen)
+			prefixWidth = m.PrefixGen.InitPrefixer(m.listItems[index].value, c, m.cursorIndex, m.lineOffset, m.Width, m.Height)
 		}
 		if m.SuffixGen != nil {
-			suffixWidth = m.SuffixGen.InitSuffixer(m.listItems[index].value, c, m.viewPos, m.Screen)
+			suffixWidth = m.SuffixGen.InitSuffixer(m.listItems[index].value, c, m.cursorIndex, m.lineOffset, m.Width, m.Height)
 		}
 		// Get actual content width
-		contentWidth := m.Screen.Width - prefixWidth - suffixWidth
+		contentWidth := m.Width - prefixWidth - suffixWidth
 
 		// Check if there is space for the content left
 		if contentWidth <= 0 {
@@ -166,29 +170,29 @@ func (m *Model) lines() ([]string, error) {
 		}
 		itemLines, _ := m.getItemLines(index, contentWidth)
 		// append lines in revers order
-		for i := len(itemLines) - 1; i >= 0 && len(linesBefor) < m.viewPos.LineOffset; i-- {
+		for i := len(itemLines) - 1; i >= 0 && len(linesBefor) < m.lineOffset; i-- {
 			linesBefor = append(linesBefor, itemLines[i])
 		}
 	}
 
 	// append lines (befor cursor) in correct order to allLines
-	allLines := make([]string, 0, m.Screen.Height)
+	allLines := make([]string, 0, m.Height)
 	for c := len(linesBefor) - 1; c >= 0; c-- {
 		allLines = append(allLines, linesBefor[c])
 	}
 
 	// Handle list items, start at cursor and go till end of list or visible (break)
-	for index := m.viewPos.Cursor; index < m.Len(); index++ {
+	for index := m.cursorIndex; index < m.Len(); index++ {
 		// Get the Width of each suf/prefix
 		var prefixWidth, suffixWidth int
 		if m.PrefixGen != nil {
-			prefixWidth = m.PrefixGen.InitPrefixer(m.listItems[index].value, index, m.viewPos, m.Screen)
+			prefixWidth = m.PrefixGen.InitPrefixer(m.listItems[index].value, index, m.cursorIndex, m.lineOffset, m.Width, m.Height)
 		}
 		if m.SuffixGen != nil {
-			suffixWidth = m.SuffixGen.InitSuffixer(m.listItems[index].value, index, m.viewPos, m.Screen)
+			suffixWidth = m.SuffixGen.InitSuffixer(m.listItems[index].value, index, m.cursorIndex, m.lineOffset, m.Width, m.Height)
 		}
 		// Get actual content width
-		contentWidth := m.Screen.Width - prefixWidth - suffixWidth
+		contentWidth := m.Width - prefixWidth - suffixWidth
 
 		// Check if there is space for the content left
 		if contentWidth <= 0 {
@@ -196,7 +200,7 @@ func (m *Model) lines() ([]string, error) {
 		}
 		itemLines, _ := m.getItemLines(index, contentWidth)
 		// append lines in correct order
-		for i := 0; i < len(itemLines) && len(allLines) < m.Screen.Height; i++ {
+		for i := 0; i < len(itemLines) && len(allLines) < m.Height; i++ {
 			allLines = append(allLines, itemLines[i])
 		}
 	}
@@ -256,21 +260,21 @@ func (m *Model) ValidIndex(index int) (int, error) {
 }
 
 func (m *Model) validOffset(newCursor int) (int, error) {
-	if m.CursorOffset*2 > m.Screen.Height {
+	if m.CursorOffset*2 > m.Height {
 		return 0, ConfigError(fmt.Errorf("CursorOffset must be less than have the screen height"))
 	}
 	newCursor, err := m.ValidIndex(newCursor)
 	if m.Len() <= 0 {
 		return m.CursorOffset, err
 	}
-	amount := newCursor - m.viewPos.Cursor
+	amount := newCursor - m.cursorIndex
 	if amount == 0 {
-		if m.viewPos.LineOffset < m.CursorOffset {
+		if m.lineOffset < m.CursorOffset {
 			return m.CursorOffset, nil
 		}
-		return m.viewPos.LineOffset, nil
+		return m.lineOffset, nil
 	}
-	newOffset := m.viewPos.LineOffset + amount
+	newOffset := m.lineOffset + amount
 
 	if m.Wrap != 1 {
 		// assume down (positive) movement
@@ -286,37 +290,24 @@ func (m *Model) validOffset(newCursor int) (int, error) {
 
 		var lineSum int
 		for i := start; i <= stop; i++ {
-			lineSum += len(m.itemLines(m.listItems[m.viewPos.Cursor+i*d], m.viewPos.Cursor+i*d))
+			lineSum += len(m.itemLines(m.listItems[m.cursorIndex+i*d], m.cursorIndex+i*d))
 		}
-		newOffset = m.viewPos.LineOffset + lineSum*d
+		newOffset = m.lineOffset + lineSum*d
 	}
 
 	if newOffset < m.CursorOffset {
 		newOffset = m.CursorOffset
-	} else if newOffset > m.Screen.Height-m.CursorOffset-1 {
-		newOffset = m.Screen.Height - m.CursorOffset - 1
+	} else if newOffset > m.Height-m.CursorOffset-1 {
+		newOffset = m.Height - m.CursorOffset - 1
 	}
 	return newOffset, err
-}
-
-// ViewPos is used for holding the information about the View parameters
-type ViewPos struct {
-	LineOffset int
-	Cursor     int
-}
-
-// ScreenInfo holds all information about the screen Area
-type ScreenInfo struct {
-	Width   int
-	Height  int
-	Profile termenv.Profile
 }
 
 // MoveCursor moves the cursor by amount and returns the absolut index of the cursor after the movement.
 // If any error occurs the cursor is not moved and the returning tea.Cmd while yield the according error.
 // If all goes well and the cursor has changed tea.Cmd while yield a CursorItemChange and a CursorIndexChange.
 func (m *Model) MoveCursor(amount int) (int, tea.Cmd) {
-	target := m.viewPos.Cursor + amount
+	target := m.cursorIndex + amount
 
 	target, err1 := m.ValidIndex(target)
 	newOffset, err2 := m.validOffset(target)
@@ -327,8 +318,8 @@ func (m *Model) MoveCursor(amount int) (int, tea.Cmd) {
 		return target, tea.Batch(func() tea.Msg { return err1 }, func() tea.Msg { return err2 })
 	}
 
-	m.viewPos.Cursor = target
-	m.viewPos.LineOffset = newOffset
+	m.cursorIndex = target
+	m.lineOffset = newOffset
 	return target, tea.Batch(func() tea.Msg { return CursorItemChange{} }, func() tea.Msg { return CursorIndexChange(target) })
 }
 
@@ -341,12 +332,12 @@ func (m *Model) SetCursor(target int) (int, tea.Cmd) {
 	if err != nil {
 		return target, func() tea.Msg { return err }
 	}
-	if target == m.viewPos.Cursor {
+	if target == m.cursorIndex {
 		return target, nil
 	}
 
-	m.viewPos.Cursor = target
-	m.viewPos.LineOffset = newOffset
+	m.cursorIndex = target
+	m.lineOffset = newOffset
 	return target, tea.Batch(func() tea.Msg { return CursorItemChange{} }, func() tea.Msg { return CursorIndexChange(target) })
 }
 
@@ -358,11 +349,11 @@ func (m *Model) Top() tea.Cmd {
 	if err != nil {
 		return func() tea.Msg { return err }
 	}
-	if m.viewPos.Cursor == 0 {
+	if m.cursorIndex == 0 {
 		return nil
 	}
-	m.viewPos.Cursor = 0
-	m.viewPos.LineOffset = m.CursorOffset
+	m.cursorIndex = 0
+	m.lineOffset = m.CursorOffset
 	return tea.Batch(func() tea.Msg { return CursorItemChange{} }, func() tea.Msg { return CursorIndexChange(0) })
 }
 
@@ -375,10 +366,10 @@ func (m *Model) Bottom() tea.Cmd {
 	if err != nil {
 		return func() tea.Msg { return err }
 	}
-	if m.viewPos.Cursor == end {
+	if m.cursorIndex == end {
 		return nil
 	}
-	m.viewPos.LineOffset = m.Screen.Height - m.CursorOffset
+	m.lineOffset = m.Height - m.CursorOffset
 	m.SetCursor(end)
 	return tea.Batch(func() tea.Msg { return CursorItemChange{} }, func() tea.Msg { return CursorIndexChange(end) })
 }
@@ -422,7 +413,7 @@ func (m *Model) AddItems(itemList []fmt.Stringer) tea.Cmd {
 func (m *Model) ResetItems(newStringers []fmt.Stringer) tea.Cmd {
 	oldCursorItem, err := m.GetCursorItem()
 	// Reset Cursor
-	m.viewPos.Cursor = 0
+	m.cursorIndex = 0
 
 	//TODO handel len(newStringers) == 0 && m.Len() == 0
 
@@ -437,7 +428,7 @@ func (m *Model) ResetItems(newStringers []fmt.Stringer) tea.Cmd {
 		newItems[i].id = m.getID()
 
 		if m.Equals != nil && err != nil && m.Equals(oldCursorItem, newValue) {
-			m.viewPos.Cursor = i
+			m.cursorIndex = i
 			cmd = func() tea.Msg { return CursorIndexChange(i) }
 		}
 	}
@@ -445,8 +436,8 @@ func (m *Model) ResetItems(newStringers []fmt.Stringer) tea.Cmd {
 	m.listItems = newItems
 
 	// reset LineOffset if Cursor was not set by matching through equals
-	if m.viewPos.Cursor == 0 {
-		m.viewPos.LineOffset = m.CursorOffset
+	if m.cursorIndex == 0 {
+		m.lineOffset = m.CursorOffset
 	}
 	// only sort if user set less function
 	if m.Less != nil {
@@ -472,11 +463,11 @@ func (m *Model) RemoveIndex(index int) (fmt.Stringer, tea.Cmd) {
 	m.listItems = append(m.listItems[:index], rest...)
 	cmd := func() tea.Msg { return ListChange{} }
 
-	oldCursor := m.viewPos.Cursor
+	oldCursor := m.cursorIndex
 	newCursor, err := m.ValidIndex(oldCursor)
 	newOffset, _ := m.validOffset(newCursor)
-	m.viewPos.Cursor = newCursor
-	m.viewPos.LineOffset = newOffset
+	m.cursorIndex = newCursor
+	m.lineOffset = newOffset
 
 	if err != nil {
 		cmd = tea.Batch(func() tea.Msg { return CursorItemChange{} }, cmd)
@@ -498,16 +489,16 @@ func (m *Model) Sort() tea.Cmd {
 		return nil
 	}
 	cmd := func() tea.Msg { return ListChange{} }
-	old := m.listItems[m.viewPos.Cursor].id
+	old := m.listItems[m.cursorIndex].id
 	// to be able to satisfy the sort.Interface without exposing a Methode which could change the List silently,
 	// a private struct (itemList) was created to fullfill it indirectly.
 	sort.Sort(&itemList{&(m.listItems), &(m.Less)})
 	for i, item := range m.listItems {
 		if item.id == old {
-			if i != m.viewPos.Cursor {
+			if i != m.cursorIndex {
 				cmd = tea.Batch(cmd, func() tea.Msg { return CursorIndexChange(i) })
 			}
-			m.viewPos.Cursor = i
+			m.cursorIndex = i
 			break
 		}
 	}
@@ -523,7 +514,7 @@ func (m *Model) Len() int {
 // If the target does not exist a error is returned through tea.Cmd.
 // Else a ListChange and a CursorIndexChange is returned.
 func (m *Model) MoveItem(amount int) tea.Cmd {
-	cur := m.viewPos.Cursor
+	cur := m.cursorIndex
 	target, err := m.ValidIndex(cur + amount)
 	if err != nil {
 		return func() tea.Msg { return err }
@@ -538,8 +529,8 @@ func (m *Model) MoveItem(amount int) tea.Cmd {
 		m.listItems[cur+c], m.listItems[cur+c+d] = m.listItems[cur+c+d], m.listItems[cur+c]
 	}
 	linOff, _ := m.validOffset(target)
-	m.viewPos.LineOffset = linOff
-	m.viewPos.Cursor = target
+	m.lineOffset = linOff
+	m.cursorIndex = target
 
 	return tea.Batch(func() tea.Msg { return ListChange{} }, func() tea.Msg { return CursorIndexChange(target) })
 }
@@ -592,7 +583,7 @@ func (m *Model) UpdateItem(index int, updater func(fmt.Stringer) (fmt.Stringer, 
 	v, cmd := updater(m.listItems[index].value)
 
 	cmd = tea.Batch(func() tea.Msg { return ListChange{} }, cmd)
-	if index == m.viewPos.Cursor {
+	if index == m.cursorIndex {
 		cmd = tea.Batch(func() tea.Msg { return CursorItemChange{} }, cmd)
 	}
 	// remove item when value equals nil
@@ -610,7 +601,7 @@ func (m *Model) GetCursorIndex() (int, tea.Cmd) {
 	if m.Len() == 0 {
 		return 0, func() tea.Msg { return NoItems(fmt.Errorf("the list has no items on which the cursor could be")) }
 	}
-	return m.viewPos.Cursor, nil
+	return m.cursorIndex, nil
 }
 
 // GetCursorItem returns the item at the current cursor position within the List
@@ -619,7 +610,7 @@ func (m *Model) GetCursorItem() (fmt.Stringer, tea.Cmd) {
 	if m.Len() == 0 {
 		return nil, func() tea.Msg { return NoItems(fmt.Errorf("the list has no items on which the cursor could be")) }
 	}
-	return m.listItems[m.viewPos.Cursor].value, nil
+	return m.listItems[m.cursorIndex].value, nil
 }
 
 // GetItem returns the item if the index exists

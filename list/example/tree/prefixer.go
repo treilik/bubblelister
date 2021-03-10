@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/termenv"
-	"github.com/treilik/bubblelist/list"
 	"strings"
 )
 
@@ -24,7 +23,9 @@ type TreePrefixer struct {
 	NumberRelative bool
 
 	prefixWidth int
-	viewPos     list.ViewPos
+
+	cursorIndex int
+	lineOffset  int
 
 	sepWidth  int
 	markWidth int
@@ -56,11 +57,12 @@ func NewPrefixer() *TreePrefixer {
 }
 
 // InitPrefixer sets up all strings used to prefix a given line later by Prefix()
-func (d *TreePrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex int, position list.ViewPos, screen list.ScreenInfo) int {
+func (d *TreePrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex, cursorIndex, lineOffset, width, height int) int {
 	d.currentIndex = currentItemIndex
-	d.viewPos = position
+	d.cursorIndex = cursorIndex
+	d.lineOffset = lineOffset
 
-	offset := position.Cursor - position.LineOffset
+	offset := cursorIndex - lineOffset
 	if offset < 0 {
 		offset = 0
 	}
@@ -73,7 +75,7 @@ func (d *TreePrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex int, po
 
 	// get widest possible number, for padding
 	// TODO handle wrap, cause only correct when wrap off:
-	d.numWidth = len(fmt.Sprintf("%d", offset+screen.Height))
+	d.numWidth = len(fmt.Sprintf("%d", offset+height))
 
 	// pad right of prefix, with length of current pointer
 
@@ -100,7 +102,7 @@ func (d *TreePrefixer) Prefix(lineIndex, allLines int) string {
 	firstPad := strings.Repeat(" ", d.numWidth)
 	var lineNum int
 	if d.Number {
-		lineNum = lineNumber(d.NumberRelative, d.viewPos.Cursor, d.currentIndex)
+		lineNum = lineNumber(d.NumberRelative, d.cursorIndex, d.currentIndex)
 	}
 	number := fmt.Sprintf("%d", lineNum)
 	// since digits are only single bytes, len is sufficient:
@@ -115,7 +117,7 @@ func (d *TreePrefixer) Prefix(lineIndex, allLines int) string {
 
 	// Current: handle highlighting of current item/first-line
 	curPad := strings.Repeat(" ", d.markWidth)
-	if d.currentIndex == d.viewPos.Cursor {
+	if d.currentIndex == d.cursorIndex {
 		curPad = d.CurrentMarker
 	}
 
