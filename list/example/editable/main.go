@@ -45,17 +45,17 @@ func newModel() *model {
 	l.SuffixGen = list.NewSuffixer()
 
 	// only used if one wants to get the Index of a item.
-	l.SetEquals(func(first, second fmt.Stringer) bool {
+	l.Equals = func(first, second fmt.Stringer) bool {
 		f := first.(stringItem)
 		s := second.(stringItem)
 		return f.id == s.id
-	})
+	}
 	// used for custom sorting, if not set string comparison will be used.
-	l.SetLess(func(first, second fmt.Stringer) bool {
+	l.Less = func(first, second fmt.Stringer) bool {
 		f := first.(stringItem)
 		s := second.(stringItem)
 		return f.id < s.id
-	})
+	}
 
 	m.list = l
 
@@ -367,7 +367,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "s":
 			less := func(a, b fmt.Stringer) bool { return a.String() < b.String() }
-			m.list.SetLess(less)
+			m.list.Less = less
 			m.list.Sort()
 			return m, nil
 		case "o":
@@ -376,7 +376,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				e, _ := b.(stringItem)
 				return d.id < e.id
 			}
-			m.list.SetLess(less)
+			m.list.Less = less
 			m.list.Sort()
 			return m, nil
 		case "a":

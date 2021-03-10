@@ -114,7 +114,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "s":
 			less := func(a, b fmt.Stringer) bool { return a.String() < b.String() }
-			m.vis.SetLess(less)
+			m.vis.Less = less
 			m.vis.Sort()
 			return m, nil
 		case "o":
@@ -123,7 +123,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				e, _ := b.(item)
 				return d.id < e.id
 			}
-			m.vis.SetLess(less)
+			m.vis.Less = less
 			m.vis.Sort()
 			return m, nil
 		case " ":

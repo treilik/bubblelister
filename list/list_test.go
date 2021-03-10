@@ -222,27 +222,6 @@ func TestWindowMsg(t *testing.T) {
 
 }
 
-// TestUnfocused should make sure that the update does not change anything if model is not focused
-func TestUnfocused(t *testing.T) {
-	m := NewModel()
-	m.Focus(true)
-	if !m.Focused() {
-		t.Error("model should be focused but isn't")
-	}
-	m.Focus(false)
-	// Check Cursor position
-	if i, err := m.GetCursorIndex(); i != 0 || err == nil {
-		t.Errorf("the cursor index of a new Model should be '0' and not: '%d' and there should be a NotFocused error: %#v", i, err)
-	}
-
-	newModel, cmd := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyRunes, Runes: []rune{'j'}}))
-	oldM := fmt.Sprintf("%#v", newModel)
-	newM := fmt.Sprintf("%#v", m)
-	if oldM != newM || cmd != nil {
-		t.Errorf("Update changes unfocused Model form:\n%#v\nto:\n%#v or returns a not nil command: %#v", oldM, newM, cmd)
-	}
-}
-
 // TestGetIndex sets a equals function and searches After the index of a specific item with GetIndex
 func TestGetIndex(t *testing.T) {
 	m := NewModel()
@@ -252,7 +231,7 @@ func TestGetIndex(t *testing.T) {
 		t.Errorf("Get Index should return a error but got nil")
 	}
 	m.AddItems(MakeStringerList([]string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}))
-	m.SetEquals(func(a, b fmt.Stringer) bool { return a.String() == b.String() })
+	m.Equals = func(a, b fmt.Stringer) bool { return a.String() == b.String() }
 	index, cmd := m.GetIndex(StringItem("z"))
 	if cmd != nil {
 		t.Errorf("GetIndex should not return a command: %s", err)
@@ -276,18 +255,17 @@ func TestCopy(t *testing.T) {
 	org := NewModel()
 	sec := org.Copy()
 
-	org.SetLess(func(a, b fmt.Stringer) bool { return a.String() < b.String() })
+	org.Less = func(a, b fmt.Stringer) bool { return a.String() < b.String() }
 
 	if &org == sec {
 		t.Errorf("Copy should return a deep copy but has the same pointer:\norginal: '%p', copy: '%p'", &org, sec)
 	}
 
-	if org.focus != sec.focus ||
-		fmt.Sprintf("%#v", org.listItems) != fmt.Sprintf("%#v", sec.listItems) ||
+	if fmt.Sprintf("%#v", org.listItems) != fmt.Sprintf("%#v", sec.listItems) ||
 
 		// All should be the same except the changed less function
-		fmt.Sprintf("%p", org.less) == fmt.Sprintf("%p", sec.less) ||
-		fmt.Sprintf("%p", org.equals) != fmt.Sprintf("%p", sec.equals) ||
+		fmt.Sprintf("%p", org.Less) == fmt.Sprintf("%p", sec.Less) ||
+		fmt.Sprintf("%p", org.Equals) != fmt.Sprintf("%p", sec.Equals) ||
 
 		fmt.Sprintf("%#v", org.CursorOffset) != fmt.Sprintf("%#v", sec.CursorOffset) ||
 

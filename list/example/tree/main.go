@@ -50,8 +50,8 @@ func main() {
 	}
 	m := model{allNodes: allNodes}
 	m.visible = list.NewModel()
-	m.visible.SetLess(less)
-	m.visible.SetEquals(equals)
+	m.visible.Less = less
+	m.visible.Equals = equals
 	m.visible.AddItems(visNodes)
 	m.startCmd = func() tea.Msg { return startMsg{} }
 
