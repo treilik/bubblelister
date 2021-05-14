@@ -43,7 +43,7 @@ func TestBasicsLines(t *testing.T) {
 	}
 
 	// first two swaped
-	orgList := MakeStringerList([]string{"2", "1", "3", "4", "5", "6", "7", "8", "9"})
+	orgList := MakeStringerList("2", "1", "3", "4", "5", "6", "7", "8", "9")
 	m.AddItems(orgList)
 
 	m.MoveCursor(1)
@@ -94,7 +94,7 @@ func TestWrappedLines(t *testing.T) {
 	m.SuffixGen = NewSuffixer()
 	m.Height = 50
 	m.Width = 80
-	m.AddItems(MakeStringerList([]string{"\n0", "1\n2", "3\n4", "5\n6", "7\n8"}))
+	m.AddItems(MakeStringerList("\n0", "1\n2", "3\n4", "5\n6", "7\n8"))
 
 	out, _ := m.Lines()
 	wrap, sep := "│", "├"
@@ -123,7 +123,7 @@ func TestMultiLineBreaks(t *testing.T) {
 	m.SuffixGen = NewSuffixer()
 	m.Height = 50
 	m.Width = 80
-	m.AddItems(MakeStringerList([]string{"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"}))
+	m.AddItems(MakeStringerList("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"))
 	out, _ := m.Lines()
 	prefix := "\x1b[7m 1╭>"
 	for i, line := range out {
@@ -153,7 +153,7 @@ func TestMovementKeys(t *testing.T) {
 	m.Wrap = 1
 	m.Height = 50
 	m.Width = 80
-	m.AddItems(MakeStringerList([]string{"\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n"}))
+	m.AddItems(MakeStringerList("\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n"))
 
 	start, finish := 0, 1
 	_, cmd := m.MoveCursor(1)
@@ -235,7 +235,7 @@ func TestGetIndex(t *testing.T) {
 	if !ok || err == nil {
 		t.Errorf("Get Index should return a error but got nil")
 	}
-	m.AddItems(MakeStringerList([]string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}))
+	m.AddItems(MakeStringerList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"))
 	m.Equals = func(a, b fmt.Stringer) bool { return a.String() == b.String() }
 	index, cmd := m.GetIndex(StringItem("z"))
 	if cmd != nil {
@@ -296,7 +296,7 @@ func TestSetCursor(t *testing.T) {
 	m := NewModel()
 	m.Height = 50
 	m.Width = 80
-	m.AddItems(MakeStringerList([]string{"\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n", ""}))
+	m.AddItems(MakeStringerList("\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n", ""))
 	type test struct {
 		oldLineOffset  int
 		oldCursorIndex int
@@ -343,7 +343,7 @@ func TestMoveItem(t *testing.T) {
 	if !ok {
 		t.Errorf("MoveItem called on a empty list should return a OutOfBounds error, but got: %s", err)
 	}
-	m.AddItems(MakeStringerList([]string{""}))
+	m.AddItems(MakeStringerList(""))
 	cmd = m.MoveItem(0)
 	err, ok = cmd().(error)
 	if ok && err != nil {
@@ -366,7 +366,7 @@ func TestView(t *testing.T) {
 		t.Error("if Lines returnes a error View should return the error string")
 	}
 	testStr := "test"
-	m.AddItems(MakeStringerList([]string{testStr, testStr}))
+	m.AddItems(MakeStringerList(testStr, testStr))
 	m.SetCursor(1)
 	if _, err := m.Lines(); err == nil {
 		t.Error("a none empty list should return a error when the screen is to small to displax anything")
@@ -386,7 +386,7 @@ func TestRemoveIndex(t *testing.T) {
 		t.Error("RemoveIndex should return a error and a nil value when the index is not valid")
 	}
 	testStr := "test"
-	m.AddItems(MakeStringerList([]string{testStr}))
+	m.AddItems(MakeStringerList(testStr))
 	item, cmd = m.RemoveIndex(0)
 	if _, ok := cmd().(error); item.String() != testStr && !ok && m.Len() != 0 {
 		t.Error("RemoveIndex should return no error and the corresponding string value when the index is valid")
@@ -397,9 +397,9 @@ func TestRemoveIndex(t *testing.T) {
 func TestResetItems(t *testing.T) {
 	m := NewModel()
 	testStr := "test"
-	m.AddItems(MakeStringerList([]string{testStr}))
+	m.AddItems(MakeStringerList(testStr))
 	secondStr := "replaced"
-	m.ResetItems(MakeStringerList([]string{secondStr}))
+	m.ResetItems(MakeStringerList(secondStr))
 	if item, cmd := m.RemoveIndex(0); item.String() != secondStr || cmd == nil || m.Len() > 1 {
 		t.Error("ResetItems should return a command and the list should be replaced")
 	}
@@ -409,12 +409,12 @@ func TestResetItems(t *testing.T) {
 func TestUpdateItem(t *testing.T) {
 	m := NewModel()
 	testStr := "test"
-	m.AddItems(MakeStringerList([]string{testStr}))
+	m.AddItems(MakeStringerList(testStr))
 	m.UpdateItem(0, func(fmt.Stringer) (fmt.Stringer, tea.Cmd) { return nil, nil })
 	if item, cmd := m.RemoveIndex(0); item != nil || cmd == nil {
 		t.Error("UpdateItem should return a command and the item should be deleted if the returned Stringer is nil")
 	}
-	m.AddItems(MakeStringerList([]string{testStr}))
+	m.AddItems(MakeStringerList(testStr))
 	secondStr := "replaced"
 	m.UpdateItem(0, func(fmt.Stringer) (fmt.Stringer, tea.Cmd) { return StringItem(secondStr), nil })
 	if item, cmd := m.RemoveIndex(0); item.String() != secondStr || cmd == nil {

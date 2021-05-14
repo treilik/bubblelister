@@ -385,13 +385,14 @@ func (m *Model) AddItems(itemList []fmt.Stringer) tea.Cmd {
 	}
 	oldLenght := m.Len()
 	for _, i := range itemList {
-		if i != nil {
-			m.listItems = append(m.listItems, item{
-				value: i,
-				id:    m.getID(),
-			},
-			)
+		if i == nil {
+			continue
 		}
+
+		m.listItems = append(m.listItems, item{
+			value: i,
+			id:    m.getID(),
+		})
 	}
 	var err error
 	var cmd tea.Cmd

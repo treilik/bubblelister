@@ -85,7 +85,7 @@ func (s StringItem) String() string {
 }
 
 // MakeStringerList is a shortcut to convert a string List to a List that satisfies the fmt.Stringer Interface
-func MakeStringerList(list []string) []fmt.Stringer {
+func MakeStringerList(list ...string) []fmt.Stringer {
 	stringerList := make([]fmt.Stringer, len(list))
 	for i, item := range list {
 		stringerList[i] = StringItem(item)
