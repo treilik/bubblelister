@@ -77,6 +77,8 @@ func (m Model) View() string {
 	return strings.Join(lines, "\n")
 }
 
+type ResetItems []fmt.Stringer
+
 // Update changes the Model of the List according to the messages received
 // if the list is focused, only WindowSizeMsg are handeled.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -110,6 +112,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			return m, func() tea.Msg { return UnhandledKey(fmt.Errorf("no binding for the key: '%s'", msg.String())) }
 		}
+	case ResetItems:
+		cmd := m.ResetItems(msg)
+		return m, cmd
 
 	case tea.MouseMsg:
 		switch msg.Type {
