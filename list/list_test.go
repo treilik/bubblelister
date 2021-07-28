@@ -134,19 +134,6 @@ func TestMultiLineBreaks(t *testing.T) {
 	}
 }
 
-// TestUpdateKeys test if the ctrl-c key send to the Update function work properly
-func TestUpdateKeys(t *testing.T) {
-	m := NewModel()
-	m.Height = 50
-	m.Width = 80
-
-	// Quit massages
-	_, cmd := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyCtrlC}))
-	if cmd() != tea.Quit() {
-		t.Errorf("ctrl-c should result in Quit message, not into: %#v", cmd)
-	}
-}
-
 // Movements
 func TestMovementKeys(t *testing.T) {
 	m := NewModel()
@@ -156,31 +143,27 @@ func TestMovementKeys(t *testing.T) {
 	m.AddItems(MakeStringerList("\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n"))
 
 	start, finish := 0, 1
-	_, cmd := m.MoveCursor(1)
-	err, ok := cmd().(error)
+	_, err := m.MoveCursor(1)
 	if m.cursorIndex != finish || err != nil {
 		t.Errorf("'MoveCursor(1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
 	start, finish = 15, 14
 	m.cursorIndex = start
-	_, cmd = m.MoveCursor(-1)
-	err, ok = cmd().(error)
+	_, err = m.MoveCursor(-1)
 	if m.cursorIndex != finish || err != nil {
 		t.Errorf("'MoveCursor(-1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
 
 	start, finish = 55, 56
 	m.cursorIndex = start
-	cmd = m.MoveItem(1)
-	err, ok = cmd().(error)
+	err = m.MoveItem(1)
 	if m.cursorIndex != finish || err != nil {
 		t.Errorf("'MoveItem(1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
 	m.lineOffset = 15
 	start, finish = 15, 14
 	m.cursorIndex = start
-	cmd = m.MoveItem(-1)
-	err, ok = cmd().(error)
+	err = m.MoveItem(-1)
 	if m.cursorIndex != finish || err != nil {
 		t.Errorf("'MoveItem(-1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
@@ -188,21 +171,18 @@ func TestMovementKeys(t *testing.T) {
 		t.Errorf("up movement should change the Item offset to '14' but got: %d", m.lineOffset)
 	}
 	finish = m.Len() - 1
-	cmd = m.Bottom()
-	err, ok = cmd().(error)
+	err = m.Bottom()
 	if m.cursorIndex != finish || err != nil {
 		t.Errorf("'Bottom()' should have nil error but got: '%#v' and move the Cursor to last index: '%d', but got: %d", err, m.Len()-1, m.cursorIndex)
 	}
 	finish = 0
 	m.cursorIndex = start
-	cmd = m.Top()
-	err, ok = cmd().(error)
+	err = m.Top()
 	if m.cursorIndex != finish || err != nil {
 		t.Errorf("'Top()' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
-	_, cmd = m.SetCursor(10)
-	err, ok = cmd().(error)
-	if m.cursorIndex != 10 || ok && err != nil {
+	_, err = m.SetCursor(10)
+	if m.cursorIndex != 10 || err != nil {
 		t.Errorf("SetCursor should set the cursor to index '10' but gut '%d' and err should be nil but got '%s'", m.cursorIndex, err)
 	}
 }
@@ -230,16 +210,15 @@ func TestWindowMsg(t *testing.T) {
 // TestGetIndex sets a equals function and searches After the index of a specific item with GetIndex
 func TestGetIndex(t *testing.T) {
 	m := NewModel()
-	_, cmd := m.GetIndex(StringItem("z"))
-	err, ok := cmd().(error)
-	if !ok || err == nil {
+	_, err := m.GetIndex(StringItem("z"))
+	if err == nil {
 		t.Errorf("Get Index should return a error but got nil")
 	}
 	m.AddItems(MakeStringerList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"))
-	m.Equals = func(a, b fmt.Stringer) bool { return a.String() == b.String() }
-	index, cmd := m.GetIndex(StringItem("z"))
-	if cmd != nil {
-		t.Errorf("GetIndex should not return a command: %s", err)
+	m.EqualsFunc = func(a, b fmt.Stringer) bool { return a.String() == b.String() }
+	index, err := m.GetIndex(StringItem("z"))
+	if err != nil {
+		t.Errorf("GetIndex should not return a err: %s", err)
 	}
 	if index != m.Len()-1 {
 		t.Errorf("GetIndex returns wrong index: '%d' instead of '%d'", index, m.Len()-1)
@@ -260,7 +239,7 @@ func TestCopy(t *testing.T) {
 	org := NewModel()
 	sec := org.Copy()
 
-	org.Less = func(a, b fmt.Stringer) bool { return a.String() < b.String() }
+	org.LessFunc = func(a, b fmt.Stringer) bool { return a.String() < b.String() }
 
 	if &org == sec {
 		t.Errorf("Copy should return a deep copy but has the same pointer:\norginal: '%p', copy: '%p'", &org, sec)
@@ -269,8 +248,8 @@ func TestCopy(t *testing.T) {
 	if fmt.Sprintf("%#v", org.listItems) != fmt.Sprintf("%#v", sec.listItems) ||
 
 		// All should be the same except the changed less function
-		fmt.Sprintf("%p", org.Less) == fmt.Sprintf("%p", sec.Less) ||
-		fmt.Sprintf("%p", org.Equals) != fmt.Sprintf("%p", sec.Equals) ||
+		fmt.Sprintf("%p", org.LessFunc) == fmt.Sprintf("%p", sec.LessFunc) ||
+		fmt.Sprintf("%p", org.EqualsFunc) != fmt.Sprintf("%p", sec.EqualsFunc) ||
 
 		fmt.Sprintf("%#v", org.CursorOffset) != fmt.Sprintf("%#v", sec.CursorOffset) ||
 
@@ -338,19 +317,18 @@ func TestSetCursor(t *testing.T) {
 // TestMoveItem test wrong arguments
 func TestMoveItem(t *testing.T) {
 	m := NewModel()
-	cmd := m.MoveItem(0)
-	err, ok := cmd().(OutOfBounds)
+	err := m.MoveItem(0)
+	err, ok := err.(OutOfBounds)
 	if !ok {
 		t.Errorf("MoveItem called on a empty list should return a OutOfBounds error, but got: %s", err)
 	}
 	m.AddItems(MakeStringerList(""))
-	cmd = m.MoveItem(0)
-	err, ok = cmd().(error)
+	err = m.MoveItem(0)
 	if ok && err != nil {
 		t.Errorf("MoveItem(0) should not return a error on a not empty list, but got '%s'", err)
 	}
-	cmd = m.MoveItem(1)
-	err, ok = cmd().(OutOfBounds)
+	err = m.MoveItem(1)
+	err, ok = err.(OutOfBounds)
 	if !ok {
 		t.Errorf("MoveItem should return a OutOfBounds error if traget is beyond list border, but got: '%s'", err)
 	}
@@ -381,14 +359,14 @@ func TestView(t *testing.T) {
 // TestRemoveIndex test if the item at the index was removed
 func TestRemoveIndex(t *testing.T) {
 	m := NewModel()
-	item, cmd := m.RemoveIndex(0)
-	if _, ok := cmd().(error); item != nil && ok {
+	item, err := m.RemoveIndex(0)
+	if item != nil && err != nil {
 		t.Error("RemoveIndex should return a error and a nil value when the index is not valid")
 	}
 	testStr := "test"
 	m.AddItems(MakeStringerList(testStr))
-	item, cmd = m.RemoveIndex(0)
-	if _, ok := cmd().(error); item.String() != testStr && !ok && m.Len() != 0 {
+	item, err = m.RemoveIndex(0)
+	if item.String() != testStr && err != nil && m.Len() != 0 {
 		t.Error("RemoveIndex should return no error and the corresponding string value when the index is valid")
 	}
 }
@@ -400,8 +378,8 @@ func TestResetItems(t *testing.T) {
 	m.AddItems(MakeStringerList(testStr))
 	secondStr := "replaced"
 	m.ResetItems(MakeStringerList(secondStr))
-	if item, cmd := m.RemoveIndex(0); item.String() != secondStr || cmd == nil || m.Len() > 1 {
-		t.Error("ResetItems should return a command and the list should be replaced")
+	if item, err := m.RemoveIndex(0); item.String() != secondStr || err == nil || m.Len() > 1 {
+		t.Error("the list was not replaced, but should have been")
 	}
 }
 
@@ -411,13 +389,13 @@ func TestUpdateItem(t *testing.T) {
 	testStr := "test"
 	m.AddItems(MakeStringerList(testStr))
 	m.UpdateItem(0, func(fmt.Stringer) (fmt.Stringer, tea.Cmd) { return nil, nil })
-	if item, cmd := m.RemoveIndex(0); item != nil || cmd == nil {
+	if item, err := m.RemoveIndex(0); item != nil || err == nil {
 		t.Error("UpdateItem should return a command and the item should be deleted if the returned Stringer is nil")
 	}
 	m.AddItems(MakeStringerList(testStr))
 	secondStr := "replaced"
 	m.UpdateItem(0, func(fmt.Stringer) (fmt.Stringer, tea.Cmd) { return StringItem(secondStr), nil })
-	if item, cmd := m.RemoveIndex(0); item.String() != secondStr || cmd == nil {
+	if item, err := m.RemoveIndex(0); item.String() != secondStr || err == nil {
 		t.Error("UpdateItem should return a command and the item should be replaced")
 	}
 }

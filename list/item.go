@@ -92,27 +92,3 @@ func MakeStringerList(list ...string) []fmt.Stringer {
 	}
 	return stringerList
 }
-
-// itemList is a struct only to make the list-Model Sortable without exposing the demanded methodes,
-// cause they would undermine the event loop. (Swap would change the list without the possibility of
-// returning a tea.Cmd to signal the change.
-type itemList struct {
-	list *[]item
-	less *func(fmt.Stringer, fmt.Stringer) bool
-}
-
-func (m *itemList) Less(i, j int) bool {
-	// If User does not provide less function use string comparison, but dont change m.less, to be able to see when user set one.
-	if *m.less == nil {
-		return (*m.list)[i].value.String() < (*m.list)[j].value.String()
-	}
-	return (*m.less)((*m.list)[i].value, (*m.list)[j].value)
-}
-
-func (m *itemList) Swap(i, j int) {
-	(*m.list)[i], (*m.list)[j] = (*m.list)[j], (*m.list)[i]
-}
-
-func (m *itemList) Len() int {
-	return len(*m.list)
-}

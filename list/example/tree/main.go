@@ -50,8 +50,8 @@ func main() {
 	}
 	m := model{allNodes: allNodes}
 	m.visible = list.NewModel()
-	m.visible.Less = less
-	m.visible.Equals = equals
+	m.visible.LessFunc = less
+	m.visible.EqualsFunc = equals
 	m.visible.AddItems(visNodes)
 	m.startCmd = func() tea.Msg { return startMsg{} }
 
@@ -100,13 +100,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q":
 			return m, tea.Quit
+		case "down":
+			m.visible.MoveCursor(1)
+			return m, nil
+		case "up":
+			m.visible.MoveCursor(-1)
+			return m, nil
 		case "+":
-			v, cmd := m.visible.GetCursorItem()
-			if cmd != nil {
-				msg := cmd()
-				if _, ok := msg.(error); ok {
-					return nil, cmd
-				}
+			v, err := m.visible.GetCursorItem()
+			if err != nil {
+				return nil, func() tea.Msg { return err }
 			}
 
 			parent, ok := v.(node)
@@ -126,17 +129,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.allNodes[i] = n
 				}
 			}
-			cmd = m.visible.AddItems(newNodes)
+			err = m.visible.AddItems(newNodes)
 			m.visible.Sort()
-			return m, cmd
+			return m, func() tea.Msg { return err }
 
 		case "-":
-			v, cmd := m.visible.GetCursorItem()
-			if cmd != nil {
-				msg := cmd()
-				if _, ok := msg.(error); ok {
-					return m, cmd
-				}
+			v, err := m.visible.GetCursorItem()
+			if err != nil {
+				return m, func() tea.Msg { return err }
 			}
 			parent, ok := v.(node)
 			if !ok {
@@ -162,11 +162,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			}
-			return m, cmd
+			return m, nil
 		case "s":
 			// dont return the command issued by the Sort command, possible endless sort loop!
 			// Because we are sorting when receiving a ListChange Msg and they get issued by the Sort method -> loop.
-			_ = m.visible.Sort()
+			m.visible.Sort()
 			return m, nil
 		default:
 			newList, cmd := m.visible.Update(msg)
@@ -176,13 +176,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, cmd
 		}
-	case list.ListChange:
-		// dont return the command issued by the Sort command, endless sort loop!
-		// Because we are sorting here when receiving a ListChange Msg and they get issued by the Sort method -> loop.
-		_ = m.visible.Sort()
-		return m, nil
 	case startMsg:
-		_ = m.visible.Sort()
+		m.visible.Sort()
 		_, _ = m.visible.SetCursor(0)
 		return m, nil
 	default:

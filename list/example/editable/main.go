@@ -45,13 +45,13 @@ func newModel() *model {
 	l.SuffixGen = list.NewSuffixer()
 
 	// only used if one wants to get the Index of a item.
-	l.Equals = func(first, second fmt.Stringer) bool {
+	l.EqualsFunc = func(first, second fmt.Stringer) bool {
 		f := first.(stringItem)
 		s := second.(stringItem)
 		return f.id == s.id
 	}
 	// used for custom sorting, if not set string comparison will be used.
-	l.Less = func(first, second fmt.Stringer) bool {
+	l.LessFunc = func(first, second fmt.Stringer) bool {
 		f := first.(stringItem)
 		s := second.(stringItem)
 		return f.id < s.id
@@ -209,8 +209,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			item.input = newInput
 			return item, cmd
 		}
-		i, _ := m.list.GetCursorIndex()
-		cmd := m.list.UpdateItem(i, updater)
+		i, err := m.list.GetCursorIndex()
+		if err != nil {
+			return m, nil
+		}
+		cmd, _ := m.list.UpdateItem(i, updater)
 		return m, cmd
 	}
 
@@ -367,7 +370,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "s":
 			less := func(a, b fmt.Stringer) bool { return a.String() < b.String() }
-			m.list.Less = less
+			m.list.LessFunc = less
 			m.list.Sort()
 			return m, nil
 		case "o":
@@ -376,7 +379,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				e, _ := b.(stringItem)
 				return d.id < e.id
 			}
-			m.list.Less = less
+			m.list.LessFunc = less
 			m.list.Sort()
 			return m, nil
 		case "a":
@@ -393,12 +396,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				j, _ = strconv.Atoi(m.jump)
 				m.jump = ""
 			}
-			var ok bool
+			var err error
 			var i int
-			for c := 0; c < j && !ok; c++ {
+			for c := 0; c < j && err == nil; c++ {
 				i, _ = m.list.GetCursorIndex()
-				_, cmd := m.list.RemoveIndex(i)
-				_, ok = cmd().(error)
+				_, err = m.list.RemoveIndex(i)
 			}
 			return m, nil
 

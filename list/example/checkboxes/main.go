@@ -114,7 +114,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "s":
 			less := func(a, b fmt.Stringer) bool { return a.String() < b.String() }
-			m.vis.Less = less
+			m.vis.LessFunc = less
 			m.vis.Sort()
 			return m, nil
 		case "o":
@@ -123,7 +123,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				e, _ := b.(item)
 				return d.id < e.id
 			}
-			m.vis.Less = less
+			m.vis.LessFunc = less
 			m.vis.Sort()
 			return m, nil
 		case " ":
@@ -135,8 +135,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				i.selected = !i.selected
 				return i, nil
 			}
-			i, _ := m.vis.GetCursorIndex()
-			cmd := m.vis.UpdateItem(i, updater)
+			i, err := m.vis.GetCursorIndex()
+			if err != nil {
+				return m, nil
+			}
+			cmd, _ := m.vis.UpdateItem(i, updater)
 			return m, cmd
 		default:
 			// resets jump buffer to prevent confusion
