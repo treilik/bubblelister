@@ -2,10 +2,12 @@ package list
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/muesli/termenv"
 	"sort"
 	"strings"
+	"sync"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/muesli/termenv"
 )
 
 // Model is a bubbletea List of strings
@@ -35,9 +37,9 @@ type Model struct {
 	LineStyle    termenv.Style
 	CurrentStyle termenv.Style
 
-	// Channels to create unique ids for all added/new items
-	requestID chan<- struct{}
-	resultID  <-chan int
+	// mutex for unique ids
+	idMutex   *sync.Mutex
+	idCounter int
 }
 
 // NewModel returns a Model with some save/sane defaults
@@ -45,6 +47,7 @@ type Model struct {
 func NewModel() Model {
 	// just reverse colors to keep there information
 	curStyle := termenv.Style{}.Reverse()
+	var mut sync.Mutex
 	return Model{
 		// Try to keep $CursorOffset lines between Cursor and screen Border
 		CursorOffset: 5,
@@ -57,6 +60,8 @@ func NewModel() Model {
 		PrefixGen: NewPrefixer(),
 
 		CurrentStyle: curStyle,
+
+		idMutex: &mut,
 	}
 }
 
@@ -566,34 +571,12 @@ func (m *Model) GetAllItems() []fmt.Stringer {
 	return stringerList
 }
 
-// Copy returns a deep copy of the list-model
-func (m *Model) Copy() *Model {
-	copiedModel := &Model{}
-	*copiedModel = *m
-	return copiedModel
-}
-
 // getID returns a new for this list unique id
 // to identify the items and set the cursor after sorting correctly.
 func (m *Model) getID() int {
-	if m.requestID == nil || m.resultID == nil {
-		req := make(chan struct{})
-		res := make(chan int)
-
-		m.requestID = req
-		m.resultID = res
-
-		// the id '0' is skiped to be able to distinguish zero-value and proper id TODO is this a valid/good way to go?
-		go func(requ <-chan struct{}, send chan<- int) {
-			for c := 2; true; c++ {
-				_ = <-requ
-				send <- c
-			}
-		}(req, res)
-
-		return 1
-	}
-	var e struct{}
-	m.requestID <- e
-	return <-m.resultID
+	m.idMutex.Lock()
+	// skip the 0 to be able to distinguish valid and default ids
+	m.idCounter++
+	m.idMutex.Unlock()
+	return m.idCounter
 }

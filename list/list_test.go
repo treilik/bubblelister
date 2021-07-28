@@ -234,42 +234,6 @@ func TestWithinBorder(t *testing.T) {
 	}
 }
 
-// TestCopy test if if Copy returns a deep copy
-func TestCopy(t *testing.T) {
-	org := NewModel()
-	sec := org.Copy()
-
-	org.LessFunc = func(a, b fmt.Stringer) bool { return a.String() < b.String() }
-
-	if &org == sec {
-		t.Errorf("Copy should return a deep copy but has the same pointer:\norginal: '%p', copy: '%p'", &org, sec)
-	}
-
-	if fmt.Sprintf("%#v", org.listItems) != fmt.Sprintf("%#v", sec.listItems) ||
-
-		// All should be the same except the changed less function
-		fmt.Sprintf("%p", org.LessFunc) == fmt.Sprintf("%p", sec.LessFunc) ||
-		fmt.Sprintf("%p", org.EqualsFunc) != fmt.Sprintf("%p", sec.EqualsFunc) ||
-
-		fmt.Sprintf("%#v", org.CursorOffset) != fmt.Sprintf("%#v", sec.CursorOffset) ||
-
-		fmt.Sprintf("%#v", org.Width) != fmt.Sprintf("%#v", sec.Width) ||
-		fmt.Sprintf("%#v", org.Height) != fmt.Sprintf("%#v", sec.Height) ||
-		fmt.Sprintf("%#v", org.cursorIndex) != fmt.Sprintf("%#v", sec.cursorIndex) ||
-		fmt.Sprintf("%#v", org.lineOffset) != fmt.Sprintf("%#v", sec.lineOffset) ||
-
-		fmt.Sprintf("%#v", org.Wrap) != fmt.Sprintf("%#v", sec.Wrap) ||
-
-		fmt.Sprintf("%#v", org.PrefixGen) != fmt.Sprintf("%#v", sec.PrefixGen) ||
-		fmt.Sprintf("%#v", org.SuffixGen) != fmt.Sprintf("%#v", sec.SuffixGen) ||
-
-		fmt.Sprintf("%#v", org.LineStyle) != fmt.Sprintf("%#v", sec.LineStyle) ||
-		fmt.Sprintf("%#v", org.CurrentStyle) != fmt.Sprintf("%#v", sec.CurrentStyle) {
-
-		t.Errorf("Copy should have same string repesentation except different less function pointer:\n orginal: '%#v'\n    copy: '%#v'", org, sec)
-	}
-}
-
 // TestSetCursor tests if the LineOffset and Cursor positions are correct
 func TestSetCursor(t *testing.T) {
 	m := NewModel()
