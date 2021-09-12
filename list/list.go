@@ -12,7 +12,7 @@ import (
 type Model struct {
 	listItems []item
 
-	Less   func(fmt.Stringer, fmt.Stringer) bool // function used for sorting // TODO make public?
+	Less   func(fmt.Stringer, fmt.Stringer) bool // function used for sorting
 	Equals func(fmt.Stringer, fmt.Stringer) bool // used after sorting, to be set from the user
 
 	// offset or margin between the cursor and the visible border
@@ -417,7 +417,7 @@ func (m *Model) AddItems(itemList []fmt.Stringer) tea.Cmd {
 // If the Cursor Index or Item has changed the corrisponding tea.Cmd is returned,
 // but in any case a ListChange is returned through the tea.Cmd.
 func (m *Model) ResetItems(newStringers []fmt.Stringer) tea.Cmd {
-	oldCursorItem, err := m.GetCursorItem()
+	oldCursorItem := m.GetCursorItem()
 	// Reset Cursor
 	m.cursorIndex = 0
 
@@ -425,15 +425,14 @@ func (m *Model) ResetItems(newStringers []fmt.Stringer) tea.Cmd {
 
 	cmd := func() tea.Msg { return CursorItemChange{} }
 
-	newItems := make([]item, len(newStringers))
+	newItems := make([]item, 0, len(newStringers))
 	for i, newValue := range newStringers {
 		if newValue == nil {
 			continue
 		}
-		newItems[i].value = newValue
-		newItems[i].id = m.getID()
+		newItems = append(newItems, item{value: newValue, id: m.getID()})
 
-		if m.Equals != nil && err != nil && m.Equals(oldCursorItem, newValue) {
+		if m.Equals != nil && oldCursorItem != nil && m.Equals(oldCursorItem, newValue) {
 			m.cursorIndex = i
 			cmd = func() tea.Msg { return CursorIndexChange(i) }
 		}
@@ -589,15 +588,18 @@ func (m *Model) UpdateItem(index int, updater func(fmt.Stringer) (fmt.Stringer, 
 	v, cmd := updater(m.listItems[index].value)
 
 	cmd = tea.Batch(func() tea.Msg { return ListChange{} }, cmd)
-	if index == m.cursorIndex {
-		cmd = tea.Batch(func() tea.Msg { return CursorItemChange{} }, cmd)
-	}
 	// remove item when value equals nil
 	if v == nil {
 		m.RemoveIndex(index)
+		if index == m.cursorIndex {
+			cmd = tea.Batch(func() tea.Msg { return CursorItemChange{} }, cmd)
+		}
 		return cmd
 	}
 	m.listItems[index].value = v
+	if index == m.cursorIndex {
+		cmd = tea.Batch(func() tea.Msg { return CursorItemChange{} }, cmd)
+	}
 	return cmd
 }
 
@@ -611,12 +613,12 @@ func (m *Model) GetCursorIndex() (int, tea.Cmd) {
 }
 
 // GetCursorItem returns the item at the current cursor position within the List
-// or a NoItems error if the list has no items on which the cursor could be.
-func (m *Model) GetCursorItem() (fmt.Stringer, tea.Cmd) {
+// or nil.
+func (m *Model) GetCursorItem() fmt.Stringer {
 	if m.Len() == 0 {
-		return nil, func() tea.Msg { return NoItems(fmt.Errorf("the list has no items on which the cursor could be")) }
+		return nil // TODO or better this:, func() tea.Msg { return NoItems(fmt.Errorf("the list has no items on which the cursor could be")) }
 	}
-	return m.listItems[m.cursorIndex].value, nil
+	return m.listItems[m.cursorIndex].value
 }
 
 // GetItem returns the item if the index exists
