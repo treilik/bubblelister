@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.19.3
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.9.0
+	github.com/treilik/reflow v0.1.1-0.20211027174018-7170e740e1ac // TODO change back to muesli after pr is merged
 )
 
 require (

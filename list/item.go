@@ -3,7 +3,7 @@ package list
 import (
 	"fmt"
 	"github.com/muesli/reflow/ansi"
-	"github.com/muesli/reflow/wordwrap"
+	"github.com/treilik/reflow/wordwrap"
 	"strings"
 )
 
@@ -26,7 +26,7 @@ func (m *Model) itemLines(i item, index int) []string {
 	}
 	contentWith := m.Width - preWidth - sufWidth
 	// TODO hard limit the string length
-	lines := strings.Split(wordwrap.String(i.value.String(), contentWith), "\n")
+	lines := strings.Split(wordwrap.HardWrap(i.value.String(), contentWith, "    "), "\n")
 	if m.Wrap != 0 && len(lines) > m.Wrap {
 		return lines[:m.Wrap]
 	}
@@ -53,9 +53,6 @@ func (m *Model) getItemLines(index, contentWidth int) ([]string, error) {
 		}
 		if m.SuffixGen != nil {
 			free := contentWidth - ansi.PrintableRuneWidth(lineContent)
-			if free < 0 {
-				free = 0 // TODO is this nessecary?
-			}
 			suffix := m.SuffixGen.Suffix(c, lenLines)
 			if suffix != "" {
 				lineSuffix = fmt.Sprintf("%s%s", strings.Repeat(" ", free), suffix)
