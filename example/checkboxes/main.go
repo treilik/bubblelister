@@ -88,10 +88,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "J":
-			m.vis.MoveItem(m.popJump(1))
+			i, _ := m.vis.GetCursorIndex()
+			m.vis.MoveItem(i, m.popJump(1))
 			return m, nil
 		case "K":
-			m.vis.MoveItem(-m.popJump(1))
+			i, _ := m.vis.GetCursorIndex()
+			m.vis.MoveItem(i, -m.popJump(1))
 			return m, nil
 		case "t", "home":
 			j := m.popJump(0)
@@ -127,7 +129,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.vis.Sort()
 			return m, nil
 		case " ":
-			updater := func(a fmt.Stringer) (fmt.Stringer, tea.Cmd) {
+			updater := func(a fmt.Stringer) (fmt.Stringer, error) {
 				i, ok := a.(item)
 				if !ok {
 					return a, nil
@@ -139,8 +141,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, nil
 			}
-			cmd, _ := m.vis.UpdateItem(i, updater)
-			return m, cmd
+			m.vis.UpdateItem(i, updater)
+			return m, nil
 		default:
 			// resets jump buffer to prevent confusion
 			m.jump = ""
