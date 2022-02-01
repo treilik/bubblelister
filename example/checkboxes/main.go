@@ -17,13 +17,13 @@ func main() {
 	m.vis = list.NewModel()
 	m.vis.PrefixGen = NewPrefixer()
 	m.head = "My TODO list!\n============="
-	m.AddItems([]string{
+	m.AddItems(
 		"buying eggs",
 		"take the trash out",
 		"get a hair cut",
 		"be nice\nto the neighbours",
 		"get milk",
-	})
+	)
 	m.tail = "============================================\nuse ' ' to change the done state of a item\nuse 'q' or 'ctrl+c' to exit"
 	p := tea.NewProgram(m)
 	if err := p.Start(); err != nil {
@@ -181,12 +181,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	return fmt.Sprintf("%s\n%s\n%s", m.head, m.vis.View(), m.tail)
 }
-func (m *model) AddItems(toAdd []string) {
+func (m *model) AddItems(toAdd ...string) {
 	strList := make([]fmt.Stringer, len(toAdd))
 	for i, str := range toAdd {
 		strList[i] = item{content: str}
 	}
-	m.vis.AddItems(strList)
+	m.vis.AddItems(strList...)
 }
 
 // popJump takes default vaule and returns the integer value of the jump string

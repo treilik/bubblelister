@@ -52,7 +52,7 @@ func main() {
 	m.visible = list.NewModel()
 	m.visible.LessFunc = less
 	m.visible.EqualsFunc = equals
-	m.visible.AddItems(visNodes)
+	m.visible.AddItems(visNodes...)
 	m.startCmd = func() tea.Msg { return startMsg{} }
 
 	m.visible.PrefixGen = NewPrefixer()
@@ -129,7 +129,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.allNodes[i] = n
 				}
 			}
-			err = m.visible.AddItems(newNodes)
+			err = m.visible.AddItems(newNodes...)
 			m.visible.Sort()
 			return m, func() tea.Msg { return err }
 

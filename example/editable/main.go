@@ -81,7 +81,7 @@ func (m *model) AddStrings(items []string) error {
 		}
 		newList = append(newList, stringItem{value: i, id: id})
 	}
-	m.list.AddItems(newList)
+	m.list.AddItems(newList...)
 	return nil
 }
 

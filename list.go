@@ -335,7 +335,7 @@ func (m *Model) Bottom() error {
 // Neither the cursor item nor its index will change, but if items where added, tea.Cmd will yield a ListChange Msg.
 // If you add very many Items, the program will get slower, since bubbletea is a elm architektur,
 // Update and View are functions and are call with a copy of the list-Model which takes more time if the Model/List is bigger.
-func (m *Model) AddItems(itemList []fmt.Stringer) error {
+func (m *Model) AddItems(itemList ...fmt.Stringer) error {
 	if len(itemList) == 0 {
 		return nil
 	}
@@ -362,7 +362,7 @@ func (m *Model) AddItems(itemList []fmt.Stringer) error {
 // the cursor is set on this (or if equals-func is bad the last-)item.
 // If the Cursor Index or Item has changed the corrisponding tea.Cmd is returned,
 // but in any case a ListChange is returned through the tea.Cmd.
-func (m *Model) ResetItems(newStringers []fmt.Stringer) error {
+func (m *Model) ResetItems(newStringers ...fmt.Stringer) error {
 	oldCursorItem, _ := m.GetCursorItem()
 	// Reset Cursor
 	m.cursorIndex = 0
