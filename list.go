@@ -472,11 +472,17 @@ func (m *Model) MoveItem(index, amount int) error {
 	}
 
 	if amount < 0 { // amount negative
-		middle := m.listItems[index+amount : index]
+
+		// since m.listItems is a slice make a deep copy for middle and rest so that they are independent from m.listItems
+		middleSlice := m.listItems[target:index]
+		middle := make([]item, len(middleSlice))
+		copy(middle, middleSlice)
 
 		var rest []item
 		if index+1 < m.Len() {
-			rest = m.listItems[index+1:]
+			restSlice := m.listItems[index+1:]
+			rest = make([]item, len(restSlice))
+			copy(rest, restSlice)
 		}
 		// add beginning and moving item
 		m.listItems = append(m.listItems[:target], m.listItems[index])
@@ -486,11 +492,16 @@ func (m *Model) MoveItem(index, amount int) error {
 
 	} else { // amount positive
 
-		middle := m.listItems[index+1 : target+1]
+		// since m.listItems is a slice make a deep copy for middle and rest so that they are independent from m.listItems
+		middleSlice := m.listItems[index+1 : target+1]
+		middle := make([]item, len(middleSlice))
+		copy(middle, middleSlice)
 
 		var rest []item
 		if target+1 < m.Len() {
-			rest = m.listItems[target+1:]
+			restSlice := m.listItems[target+1:]
+			rest = make([]item, len(restSlice))
+			copy(rest, restSlice)
 		}
 
 		movingItem := m.listItems[index]
