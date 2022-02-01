@@ -1,4 +1,4 @@
-package list
+package bubblelister
 
 import (
 	"fmt"
@@ -260,8 +260,7 @@ func (m *Model) validOffset(newCursor int) (int, error) {
 }
 
 // MoveCursor moves the cursor by amount and returns the absolut index of the cursor after the movement.
-// If any error occurs the cursor is not moved and the returning tea.Cmd while yield the according error.
-// If all goes well and the cursor has changed tea.Cmd while yield a CursorItemChange and a CursorIndexChange.
+// If any error occurs the cursor is not moved.
 func (m *Model) MoveCursor(amount int) (int, error) {
 	target := m.cursorIndex + amount
 
@@ -279,9 +278,8 @@ func (m *Model) MoveCursor(amount int) (int, error) {
 	return target, nil
 }
 
-// SetCursor set the cursor to the specified index if possible, but If any error occurs
-// the cursor is not moved and the returning tea.Cmd while yield the according error.
-// If all goes well and the cursor has changed tea.Cmd while yield a CursorItemChange and a CursorIndexChange.
+// SetCursor set the cursor to the specified index if possible,
+// but If any error occurs the cursor is not moved.
 func (m *Model) SetCursor(target int) (int, error) {
 	target, err := m.ValidIndex(target)
 	newOffset, _ := m.validOffset(target)
@@ -297,9 +295,8 @@ func (m *Model) SetCursor(target int) (int, error) {
 	return target, nil
 }
 
-// Top moves the cursor to the first item if the list is not empty, else the cursor
-// is not moved and the returning tea.Cmd while yield the according error.
-// If all goes well and the cursor has changed tea.Cmd while yield a CursorItemChange and a CursorIndexChange.
+// Top moves the cursor to the first item if the list is not empty,
+// else the cursor is not moved.
 func (m *Model) Top() error {
 	_, err := m.ValidIndex(0)
 	if err != nil {
@@ -313,9 +310,8 @@ func (m *Model) Top() error {
 	return nil
 }
 
-// Bottom moves the cursor to the last item if the list is not empty, else the cursor
-// is not moved and the returning tea.Cmd while yield the according error.
-// If all goes well and the cursor has changed tea.Cmd while yield a CursorItemChange and a CursorIndexChange.
+// Bottom moves the cursor to the last item if the list is not empty,
+// else the cursor is not moved.
 func (m *Model) Bottom() error {
 	end := len(m.listItems) - 1
 	_, err := m.ValidIndex(end)
@@ -330,12 +326,11 @@ func (m *Model) Bottom() error {
 	return nil
 }
 
-// AddItems adds the given Items to the list Model. Run Sort() afterwards, if you want to keep the list sorted.
-// If entrys of itemList are nil they will not be added, and a NilValue error is returned through tea.Cmd.
-// Neither the cursor item nor its index will change, but if items where added, tea.Cmd will yield a ListChange Msg.
+// AddItems adds the given Items to the end of the list. Run Sort() afterwards, if you want to keep the list sorted.
+// If entrys of itemList are nil they will not be added, and a NilValue error is returned.
 // If you add very many Items, the program will get slower, since bubbletea is a elm architektur,
 // Update and View are functions and are call with a copy of the list-Model which takes more time if the Model/List is bigger.
-func (m *Model) AddItems(itemList []fmt.Stringer) error {
+func (m *Model) AddItems(itemList ...fmt.Stringer) error {
 	if len(itemList) == 0 {
 		return nil
 	}
@@ -360,14 +355,10 @@ func (m *Model) AddItems(itemList []fmt.Stringer) error {
 // ResetItems replaces all list items with the new items, if a entry is nil its not added.
 // If equals function is set and a new item yields true in comparison to the old cursor item
 // the cursor is set on this (or if equals-func is bad the last-)item.
-// If the Cursor Index or Item has changed the corrisponding tea.Cmd is returned,
-// but in any case a ListChange is returned through the tea.Cmd.
-func (m *Model) ResetItems(newStringers []fmt.Stringer) error {
+func (m *Model) ResetItems(newStringers ...fmt.Stringer) error {
 	oldCursorItem, _ := m.GetCursorItem()
 	// Reset Cursor
 	m.cursorIndex = 0
-
-	//TODO handel len(newStringers) == 0 && m.Len() == 0
 
 	newItems := make([]item, 0, len(newStringers))
 	for i, newValue := range newStringers {
@@ -394,14 +385,15 @@ func (m *Model) ResetItems(newStringers []fmt.Stringer) error {
 	return nil
 }
 
-// RemoveIndex removes and returns the item at the given index if it exists,
-// else a error is returned through the tea.Cmd.
-// If the cursor index or item has changed tea.Cmd while yield a CursorItemChange or a CursorIndexChange.
-// The cursor will hold its numeric position except the list gets to short one which case its on the end of the list.
+// RemoveIndex removes and returns the item at the given index if it exists, else a error is returned.
+// If the index matches the current cursor position the numeric of the cursor does not change except the list becomes to short, than the cursor will be at the end.
+// The cursor will stay on the item it was on and thus the numeric position may change if the removed item was before the cursor item.
 func (m *Model) RemoveIndex(index int) (fmt.Stringer, error) {
 	if _, err := m.ValidIndex(index); err != nil {
 		return nil, err
 	}
+
+	// exclude requested index/item
 	var rest []item
 	itemValue, _ := m.GetItem(index)
 	if index+1 < m.Len() {
@@ -409,6 +401,12 @@ func (m *Model) RemoveIndex(index int) (fmt.Stringer, error) {
 	}
 	m.listItems = append(m.listItems[:index], rest...)
 
+	// stay on the same item
+	if index < m.cursorIndex {
+		m.cursorIndex--
+	}
+
+	// check if cursor position is still valid and change if not
 	oldCursor := m.cursorIndex
 	newCursor, err := m.ValidIndex(oldCursor)
 	newOffset, _ := m.validOffset(newCursor)
@@ -437,7 +435,7 @@ func (m *Model) Sort() {
 	return
 }
 
-func (m Model) Less(i, j int) bool {
+func (m *Model) Less(i, j int) bool {
 	// If User does not provide less function use string comparison, but dont change m.less, to be able to see when user set one.
 	if m.LessFunc == nil {
 		return m.listItems[i].value.String() < m.listItems[j].value.String()
@@ -445,7 +443,7 @@ func (m Model) Less(i, j int) bool {
 	return m.LessFunc((m.listItems)[i].value, m.listItems[j].value)
 }
 
-func (m Model) Swap(i, j int) {
+func (m *Model) Swap(i, j int) {
 	m.listItems[i], (m.listItems)[j] = m.listItems[j], (m.listItems)[i]
 }
 
@@ -454,32 +452,121 @@ func (m *Model) Len() int {
 	return len(m.listItems)
 }
 
-// MoveItem moves the current item by amount to the end of the list.
-// If the target does not exist a error is returned through tea.Cmd.
-// Else a ListChange and a CursorIndexChange is returned.
-func (m *Model) MoveItem(amount int) error {
-	cur := m.cursorIndex
-	target, err := m.ValidIndex(cur + amount)
+// MoveCursorItemTo moves the current cursor item to the index 'to'.
+// If the target position does not exist a error is returned.
+// The Cursor stays on the same item.
+func (m *Model) MoveCursorItemTo(to int) error {
+	i, err := m.GetCursorIndex()
+	if err != nil {
+		return err
+	}
+	return m.MoveCursorItemBy(to - i)
+}
+
+// MoveCursorItemBy moves the current cursor item RELATIV.
+// If the target position does not exist a error is returned.
+// The Cursor stays on the same item.
+func (m *Model) MoveCursorItemBy(amount int) error {
+	i, err := m.GetCursorIndex()
+	if err != nil {
+		return err
+	}
+	return m.MoveItemBy(i, amount)
+}
+
+// MoveItemTo moves the item at 'from' to the index 'to'.
+// If the target position does not exist a error is returned.
+// The Cursor stays on the same item.
+func (m *Model) MoveItemTo(from, to int) error {
+	i, err := m.GetCursorIndex()
+	if err != nil {
+		return err
+	}
+	return m.MoveItemBy(from, to-i)
+}
+
+// MoveItemBy moves the item at index RELATIV by amount to the end of the list.
+// If the target position does not exist a error is returned.
+// The Cursor stays on the same item.
+func (m *Model) MoveItemBy(index, amount int) error {
+	// check valid source
+	if _, err := m.ValidIndex(index); err != nil {
+		return err
+	}
+	// check valid target
+	target, err := m.ValidIndex(index + amount)
 	if err != nil {
 		return err
 	}
 
-	d := 1
-	if amount < 0 {
-		d = -1
+	// nothing to do
+	if amount == 0 {
+		return nil
 	}
-	// TODO change to not O(n)
-	for c := 0; c*d < amount*d; c += d {
-		m.listItems[cur+c], m.listItems[cur+c+d] = m.listItems[cur+c+d], m.listItems[cur+c]
+
+	if amount < 0 { // amount negative
+
+		// since m.listItems is a slice make a deep copy for middle and rest so that they are independent from m.listItems
+		middleSlice := m.listItems[target:index]
+		middle := make([]item, len(middleSlice))
+		copy(middle, middleSlice)
+
+		var rest []item
+		if index+1 < m.Len() {
+			restSlice := m.listItems[index+1:]
+			rest = make([]item, len(restSlice))
+			copy(rest, restSlice)
+		}
+		// add beginning and moving item
+		m.listItems = append(m.listItems[:target], m.listItems[index])
+		// add the middle and the rest
+		m.listItems = append(m.listItems, middle...)
+		m.listItems = append(m.listItems, rest...)
+
+	} else { // amount positive
+
+		// since m.listItems is a slice make a deep copy for middle and rest so that they are independent from m.listItems
+		middleSlice := m.listItems[index+1 : target+1]
+		middle := make([]item, len(middleSlice))
+		copy(middle, middleSlice)
+
+		var rest []item
+		if target+1 < m.Len() {
+			restSlice := m.listItems[target+1:]
+			rest = make([]item, len(restSlice))
+			copy(rest, restSlice)
+		}
+
+		movingItem := m.listItems[index]
+
+		// add middle
+		m.listItems = append(m.listItems[:index], middle...)
+		// add the moving item and the rest
+		m.listItems = append(m.listItems, movingItem)
+		m.listItems = append(m.listItems, rest...)
 	}
+
+	// keep cursor visible
 	linOff, _ := m.validOffset(target)
 	m.lineOffset = linOff
-	m.cursorIndex = target
 
+	if m.cursorIndex == index {
+		// change cursor position to stay on the same item
+		m.cursorIndex = target
+		return nil
+	}
+
+	// change cursor position on the same item
+	if target < m.cursorIndex && index >= m.cursorIndex {
+		m.cursorIndex++
+	}
+	if target > m.cursorIndex && index <= m.cursorIndex {
+		m.cursorIndex--
+	}
 	return nil
 }
 
-// GetIndex returns NotFound error if the Equals Method is not set (SetEquals)
+// GetIndex returns NotFound error if the Equals Method is not set (SetEquals) or no item is found
 // else it returns the index of the found item
 func (m *Model) GetIndex(toSearch fmt.Stringer) (int, error) {
 	if m.EqualsFunc == nil {
@@ -508,6 +595,9 @@ func (m *Model) GetIndex(toSearch fmt.Stringer) (int, error) {
 		// TODO performance: trust User and remove check for multiple matches?
 		return -c, MultipleMatches(fmt.Errorf("The provided equals function yields multiple matches betwen one and other fmt.Stringer's"))
 	}
+	if c == 0 {
+		return -1, NotFound(fmt.Errorf("No item found"))
+	}
 	return lastIndex, nil
 }
 
@@ -515,22 +605,24 @@ func (m *Model) GetIndex(toSearch fmt.Stringer) (int, error) {
 // or if index outside the list returns OutOfBounds error.
 // If the returned fmt.Stringer value is nil, then the item gets removed from the list.
 // If you want to keep the list sorted run Sort() after updating a item.
-// tea.Cmd contains the cmd returned by the updater.
-func (m *Model) UpdateItem(index int, updater func(fmt.Stringer) (fmt.Stringer, tea.Cmd)) (tea.Cmd, error) {
-	// TODO should UpdateItem accept a function which also returns a error, so that no new item is accepted? Returning the same item, if something goes wrong does not feel right...
+// if the update function returns a error, the item is not changed and the error is directly returned
+func (m *Model) UpdateItem(index int, updater func(fmt.Stringer) (fmt.Stringer, error)) error {
 	index, err := m.ValidIndex(index)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	v, cmd := updater(m.listItems[index].value)
+	v, err := updater(m.listItems[index].value)
+	if err != nil {
+		return err
+	}
 
 	// remove item when value equals nil
 	if v == nil {
-		m.RemoveIndex(index)
-		return cmd, nil
+		_, err = m.RemoveIndex(index)
+		return err
 	}
 	m.listItems[index].value = v
-	return cmd, nil
+	return nil
 }
 
 // GetCursorIndex returns the current cursor position within the List,
@@ -543,16 +635,15 @@ func (m *Model) GetCursorIndex() (int, error) {
 }
 
 // GetCursorItem returns the item at the current cursor position within the List
-// or nil.
+// or a NoItems error if the list has no items on which the cursor could be.
 func (m *Model) GetCursorItem() (fmt.Stringer, error) {
 	if m.Len() == 0 {
-		return nil, fmt.Errorf("the list has no items on which the cursor could be")
+		return nil, NoItems(fmt.Errorf("the list has no items on which the cursor could be"))
 	}
 	return m.listItems[m.cursorIndex].value, nil
 }
 
-// GetItem returns the item if the index exists
-// a error through tea.Cmd otherwise.
+// GetItem returns the item if the index exists otherwise a error.
 func (m *Model) GetItem(index int) (fmt.Stringer, error) {
 	index, err := m.ValidIndex(index)
 	if err != nil {

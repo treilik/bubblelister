@@ -5,7 +5,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/muesli/termenv"
-	"github.com/treilik/bubblelist/list"
+	list "github.com/treilik/bubblelister"
 	//"log"
 	"os"
 	"strconv"
@@ -81,12 +81,12 @@ func (m *model) AddStrings(items []string) error {
 		}
 		newList = append(newList, stringItem{value: i, id: id})
 	}
-	m.list.AddItems(newList)
+	m.list.AddItems(newList...)
 	return nil
 }
 
 func (m *model) SetStyle(index int, style termenv.Style) error {
-	updater := func(toUp fmt.Stringer) (fmt.Stringer, tea.Cmd) {
+	updater := func(toUp fmt.Stringer) (fmt.Stringer, error) {
 		i := toUp.(stringItem)
 		i.style = style
 		return i, nil
@@ -200,20 +200,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// if there is a item to be edit, pass the massage to the Update methode of the item.
 	if k, ok := msg.(tea.KeyMsg); m.edit && ok && k.Type != tea.KeyEscape && k.Type != tea.KeyEnter {
-		updater := func(toUp fmt.Stringer) (fmt.Stringer, tea.Cmd) {
+		// closure variable
+		var cmd tea.Cmd
+
+		updater := func(toUp fmt.Stringer) (fmt.Stringer, error) {
 			item, _ := toUp.(stringItem)
 			if !item.edit {
 				return item, nil
 			}
-			newInput, cmd := item.input.Update(msg)
+			var newInput textinput.Model
+			newInput, cmd = item.input.Update(msg)
 			item.input = newInput
-			return item, cmd
+			return item, nil
 		}
 		i, err := m.list.GetCursorIndex()
 		if err != nil {
 			return m, nil
 		}
-		cmd, _ := m.list.UpdateItem(i, updater)
+		m.list.UpdateItem(i, updater)
 		return m, cmd
 	}
 
@@ -222,7 +226,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Type == tea.KeyEscape {
 			if m.edit {
 				// make sure that all items edit-fields are false and discard the change
-				updater := func(toUp fmt.Stringer) (fmt.Stringer, tea.Cmd) {
+				updater := func(toUp fmt.Stringer) (fmt.Stringer, error) {
 					item, _ := toUp.(stringItem)
 
 					item.edit = false
@@ -247,7 +251,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.edit = true
 			i, _ := m.list.GetCursorIndex()
 
-			updater := func(toUp fmt.Stringer) (fmt.Stringer, tea.Cmd) {
+			updater := func(toUp fmt.Stringer) (fmt.Stringer, error) {
 				item, _ := toUp.(stringItem)
 				item.input = textinput.NewModel()
 				item.input.Prompt = ""
@@ -266,7 +270,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.edit {
 				// Update the value and make sure that all items edit-fields are false
-				updater := func(toUp fmt.Stringer) (fmt.Stringer, tea.Cmd) {
+				updater := func(toUp fmt.Stringer) (fmt.Stringer, error) {
 					item, _ := toUp.(stringItem)
 					if item.edit {
 						item.value = item.input.Value()
@@ -324,7 +328,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				j, _ = strconv.Atoi(m.jump)
 				m.jump = ""
 			}
-			m.list.MoveItem(j)
+			m.list.MoveCursorItemBy(j)
 			return m, nil
 		case "K":
 			j := 1
@@ -332,7 +336,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				j, _ = strconv.Atoi(m.jump)
 				m.jump = ""
 			}
-			m.list.MoveItem(-j)
+			m.list.MoveCursorItemBy(-j)
 			return m, nil
 		case "t", "home":
 			j := 0
