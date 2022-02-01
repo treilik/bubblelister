@@ -452,10 +452,43 @@ func (m *Model) Len() int {
 	return len(m.listItems)
 }
 
-// MoveItem moves the current item by amount to the end of the list.
-// If the target does not exist a error is returned.
-// The Cursor stays on the same item
-func (m *Model) MoveItem(index, amount int) error {
+// MoveCursorItemTo moves the current cursor item to the index 'to'.
+// If the target position does not exist a error is returned.
+// The Cursor stays on the same item.
+func (m *Model) MoveCursorItemTo(to int) error {
+	i, err := m.GetCursorIndex()
+	if err != nil {
+		return err
+	}
+	return m.MoveCursorItemBy(to - i)
+}
+
+// MoveCursorItemBy moves the current cursor item RELATIV.
+// If the target position does not exist a error is returned.
+// The Cursor stays on the same item.
+func (m *Model) MoveCursorItemBy(amount int) error {
+	i, err := m.GetCursorIndex()
+	if err != nil {
+		return err
+	}
+	return m.MoveItemBy(i, amount)
+}
+
+// MoveItemTo moves the item at 'from' to the index 'to'.
+// If the target position does not exist a error is returned.
+// The Cursor stays on the same item.
+func (m *Model) MoveItemTo(from, to int) error {
+	i, err := m.GetCursorIndex()
+	if err != nil {
+		return err
+	}
+	return m.MoveItemBy(from, to-i)
+}
+
+// MoveItemBy moves the item at index RELATIV by amount to the end of the list.
+// If the target position does not exist a error is returned.
+// The Cursor stays on the same item.
+func (m *Model) MoveItemBy(index, amount int) error {
 	// check valid source
 	if _, err := m.ValidIndex(index); err != nil {
 		return err

@@ -88,12 +88,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "J":
-			i, _ := m.vis.GetCursorIndex()
-			m.vis.MoveItem(i, m.popJump(1))
+			m.vis.MoveCursorItemBy(m.popJump(1))
 			return m, nil
 		case "K":
-			i, _ := m.vis.GetCursorIndex()
-			m.vis.MoveItem(i, -m.popJump(1))
+			m.vis.MoveCursorItemBy(-m.popJump(1))
 			return m, nil
 		case "t", "home":
 			j := m.popJump(0)

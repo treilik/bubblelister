@@ -328,8 +328,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				j, _ = strconv.Atoi(m.jump)
 				m.jump = ""
 			}
-			i, _ := m.list.GetCursorIndex()
-			m.list.MoveItem(i, j)
+			m.list.MoveCursorItemBy(j)
 			return m, nil
 		case "K":
 			j := 1
@@ -337,8 +336,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				j, _ = strconv.Atoi(m.jump)
 				m.jump = ""
 			}
-			i, _ := m.list.GetCursorIndex()
-			m.list.MoveItem(i, -j)
+			m.list.MoveCursorItemBy(-j)
 			return m, nil
 		case "t", "home":
 			j := 0

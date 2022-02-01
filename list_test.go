@@ -50,8 +50,7 @@ func TestBasicsLines(t *testing.T) {
 	// Sort them
 	m.Sort()
 	// swap them again
-	i, _ := m.GetCursorIndex()
-	m.MoveItem(i, 1)
+	m.MoveCursorItemBy(1)
 	// should be the like the beginning
 	sortedItemList := m.GetAllItems()
 
@@ -157,16 +156,14 @@ func TestMovementKeys(t *testing.T) {
 
 	start, finish = 55, 56
 	m.cursorIndex = start
-	i, _ := m.GetCursorIndex()
-	err = m.MoveItem(i, 1)
+	err = m.MoveCursorItemBy(1)
 	if m.cursorIndex != finish || err != nil {
 		t.Errorf("'MoveItem(1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
 	m.lineOffset = 15
 	start, finish = 15, 14
 	m.cursorIndex = start
-	i, _ = m.GetCursorIndex()
-	err = m.MoveItem(i, -1)
+	err = m.MoveCursorItemBy(-1)
 	if m.cursorIndex != finish || err != nil {
 		t.Errorf("'MoveItem(-1)' should have nil error but got: '%#v' and move the Cursor to index '%d', but got: %d", err, finish, m.cursorIndex)
 	}
@@ -284,20 +281,17 @@ func TestSetCursor(t *testing.T) {
 // TestMoveItem test wrong arguments
 func TestMoveItem(t *testing.T) {
 	m := NewModel()
-	i, _ := m.GetCursorIndex()
-	err := m.MoveItem(i, 0)
+	err := m.MoveCursorItemBy(0)
 	err, ok := err.(OutOfBounds)
 	if !ok {
 		t.Errorf("MoveItem called on a empty list should return a OutOfBounds error, but got: %s", err)
 	}
 	m.AddItems(MakeStringerList("")...)
-	i, _ = m.GetCursorIndex()
-	err = m.MoveItem(i, 0)
+	err = m.MoveCursorItemBy(0)
 	if ok && err != nil {
 		t.Errorf("MoveItem(0) should not return a error on a not empty list, but got '%s'", err)
 	}
-	i, _ = m.GetCursorIndex()
-	err = m.MoveItem(i, 1)
+	err = m.MoveCursorItemBy(1)
 	err, ok = err.(OutOfBounds)
 	if !ok {
 		t.Errorf("MoveItem should return a OutOfBounds error if traget is beyond list border, but got: '%s'", err)
