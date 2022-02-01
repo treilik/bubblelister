@@ -435,7 +435,7 @@ func (m *Model) Sort() {
 	return
 }
 
-func (m Model) Less(i, j int) bool {
+func (m *Model) Less(i, j int) bool {
 	// If User does not provide less function use string comparison, but dont change m.less, to be able to see when user set one.
 	if m.LessFunc == nil {
 		return m.listItems[i].value.String() < m.listItems[j].value.String()
@@ -443,7 +443,7 @@ func (m Model) Less(i, j int) bool {
 	return m.LessFunc((m.listItems)[i].value, m.listItems[j].value)
 }
 
-func (m Model) Swap(i, j int) {
+func (m *Model) Swap(i, j int) {
 	m.listItems[i], (m.listItems)[j] = m.listItems[j], (m.listItems)[i]
 }
 
