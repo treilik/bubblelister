@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/treilik/bubblelist/list"
+	list "github.com/treilik/bubblelister"
 )
 
 // DISCLAIMER: This is not a template but a example.

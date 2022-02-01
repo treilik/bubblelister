@@ -5,7 +5,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/muesli/termenv"
-	"github.com/treilik/bubblelist/list"
+	list "github.com/treilik/bubblelister"
 	//"log"
 	"os"
 	"strconv"

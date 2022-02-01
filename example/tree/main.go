@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/treilik/bubblelist/list"
+	list "github.com/treilik/bubblelister"
 	"os"
 	"strings"
 )

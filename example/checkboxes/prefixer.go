@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/muesli/reflow/ansi"
-	"github.com/treilik/bubblelist/list"
+	list "github.com/treilik/bubblelister"
 	"strings"
 )
 
