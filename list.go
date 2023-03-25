@@ -117,7 +117,7 @@ func (m *Model) lines() ([]string, error) {
 	linesBefor := make([]string, 0, m.lineOffset)
 	// loop to add the item(-lines) befor the cursor to the return lines
 	// dont add cursor item
-	for c := 1; m.cursorIndex-c >= 0; c++ {
+	for c := 1; m.cursorIndex-c >= 0 && c <= m.Height; c++ {
 		index := m.cursorIndex - c
 		// Get the Width of each suf/prefix
 		var prefixWidth, suffixWidth int
@@ -148,7 +148,7 @@ func (m *Model) lines() ([]string, error) {
 	}
 
 	// Handle list items, start at cursor and go till end of list or visible (break)
-	for index := m.cursorIndex; index < m.Len(); index++ {
+	for index := m.cursorIndex; index < m.Len() && index < m.cursorIndex+m.Height; index++ {
 		// Get the Width of each suf/prefix
 		var prefixWidth, suffixWidth int
 		if m.PrefixGen != nil {
