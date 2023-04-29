@@ -2,9 +2,10 @@ package bubblelister
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/muesli/reflow/ansi"
 	"github.com/treilik/reflow/wordwrap"
-	"strings"
 )
 
 // Item are Items used in the list Model

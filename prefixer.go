@@ -111,13 +111,15 @@ func (d *DefaultPrefixer) InitPrefixer(value fmt.Stringer, currentItemIndex, cur
 
 // Prefix prefixes a given line
 func (d *DefaultPrefixer) Prefix(lineIndex, allLines int) string {
-	// if a number is set, prepend first line with number and both with enough spaces
-	firstPad := strings.Repeat(" ", d.numWidth)
-	var wrapPad string
-	var lineNum int
+	var (
+		wrapPad string
+		lineNum int
+	)
+
 	if d.Number {
 		lineNum = lineNumber(d.NumberRelative, d.cursorIndex, d.currentIndex)
 	}
+
 	number := fmt.Sprintf("%d", lineNum)
 	// since digits are only single bytes, len is sufficient:
 	padTo := d.numWidth - len(number)
@@ -125,7 +127,8 @@ func (d *DefaultPrefixer) Prefix(lineIndex, allLines int) string {
 		// TODO log error
 		padTo = 0
 	}
-	firstPad = strings.Repeat(" ", padTo) + number
+	// if a number is set, prepend first line with number and both with enough spaces
+	firstPad := strings.Repeat(" ", padTo) + number
 	// pad wrapped lines
 	wrapPad = strings.Repeat(" ", d.numWidth)
 
@@ -156,5 +159,6 @@ func lineNumber(relativ bool, curser, current int) int {
 	if diff < 0 {
 		diff *= -1
 	}
+
 	return diff
 }

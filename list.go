@@ -107,7 +107,7 @@ func (m Model) Lines() ([]string, error) {
 // its only one copy of the model when calling either View or Lines.
 func (m *Model) lines() ([]string, error) {
 	if m.Len() == 0 {
-		return nil, NoItems(fmt.Errorf("no items within the list"))
+		return nil, NoItems(fmt.Errorf("no items"))
 	}
 	// check visible area
 	if m.Height <= 0 || m.Width <= 0 {
@@ -117,7 +117,7 @@ func (m *Model) lines() ([]string, error) {
 	linesBefor := make([]string, 0, m.lineOffset)
 	// loop to add the item(-lines) befor the cursor to the return lines
 	// dont add cursor item
-	for c := 1; m.cursorIndex-c >= 0 && c <= m.Height; c++ {
+	for c := 1; m.cursorIndex-c >= 0 && c <= m.lineOffset; c++ {
 		index := m.cursorIndex - c
 		// Get the Width of each suf/prefix
 		var prefixWidth, suffixWidth int
@@ -139,6 +139,9 @@ func (m *Model) lines() ([]string, error) {
 		for i := len(itemLines) - 1; i >= 0 && len(linesBefor) < m.lineOffset; i-- {
 			linesBefor = append(linesBefor, itemLines[i])
 		}
+		if len(linesBefor) > m.lineOffset {
+			break
+		}
 	}
 
 	// append lines (befor cursor) in correct order to allLines
@@ -148,7 +151,7 @@ func (m *Model) lines() ([]string, error) {
 	}
 
 	// Handle list items, start at cursor and go till end of list or visible (break)
-	for index := m.cursorIndex; index < m.Len() && index < m.cursorIndex+m.Height; index++ {
+	for index := m.cursorIndex; index < m.Len(); index++ {
 		// Get the Width of each suf/prefix
 		var prefixWidth, suffixWidth int
 		if m.PrefixGen != nil {
@@ -168,6 +171,9 @@ func (m *Model) lines() ([]string, error) {
 		// append lines in correct order
 		for i := 0; i < len(itemLines) && len(allLines) < m.Height; i++ {
 			allLines = append(allLines, itemLines[i])
+		}
+		if len(allLines) > m.Height {
+			break
 		}
 	}
 	if len(allLines) == 0 {
